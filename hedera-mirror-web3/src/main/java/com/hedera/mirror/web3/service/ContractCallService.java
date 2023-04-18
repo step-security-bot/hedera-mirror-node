@@ -24,9 +24,14 @@ import static com.hedera.mirror.web3.convert.BytesDecoder.maybeDecodeSolidityErr
 import static com.hedera.mirror.web3.evm.exception.ResponseCodeUtil.getStatusOrDefault;
 import static com.hedera.mirror.web3.service.model.CallServiceParameters.CallType.ERROR;
 import static com.hedera.mirror.web3.service.model.CallServiceParameters.CallType.ETH_ESTIMATE_GAS;
+import static com.hedera.mirror.web3.utils.BinarySearchIndexGenerator.Last.TOO_HIGH;
+import static com.hedera.mirror.web3.utils.BinarySearchIndexGenerator.Last.TOO_LOW;
 import static org.apache.logging.log4j.util.Strings.EMPTY;
 
 import com.google.common.base.Stopwatch;
+
+import com.hedera.mirror.web3.utils.BinarySearchIndexGenerator;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Arrays;
@@ -88,45 +93,77 @@ public class ContractCallService {
         if (params.getGas() > properties.getMaxGasToUseLimit() || params.getGas() < properties.getMinGasToUseLimit()) {
             throw new InvalidParametersException("Invalid gas value");
         }
-        LongFunction<HederaEvmTransactionProcessingResult> callProcessor = gas -> doProcessCall(params, gas);
-        HederaEvmTransactionProcessingResult initialCallResult = callProcessor.apply(params.getGas());
+        HederaEvmTransactionProcessingResult initialCallResult = doProcessCall(params, params.getGas());
         validateTxnResult(initialCallResult, ETH_ESTIMATE_GAS);
         final long gasUsedByInitialCall = initialCallResult.getGasUsed();
 
-        long estimatedGas =
-                binarySearch(
-                        gas -> doProcessCall(params, gas),
-                        gasUsedByInitialCall,
-                        params.getGas(),
-                        properties.getDiffBetweenIterations());
+        BinarySearchIndexGenerator binaryGenerator = new BinarySearchIndexGenerator(gasUsedByInitialCall,
+                params.getGas());
 
-        return Long.toHexString(estimatedGas);
-    }
 
-    /**Feature work: move to another class and compare performance with interpolation algo.
-     */
-    private long binarySearch(LongFunction<HederaEvmTransactionProcessingResult> CallProcessor, long lo, long hi,
-                              long minDiffBetweenIterations) {
-        long prevGasLimit = lo;
-        while (lo + 1 < hi) {
-            long mid = (hi + lo) / 2;
-            HederaEvmTransactionProcessingResult transactionResult = CallProcessor.apply(mid);
+        BinarySearchIndexGenerator.Last last = TOO_LOW;
+        BinarySearchIndexGenerator.Next next;
+        HederaEvmTransactionProcessingResult processingResult;
+        long prevGasLimit = gasUsedByInitialCall;
+        while (true) {
+            next = binaryGenerator.next(last);
+            if (BinarySearchIndexGenerator.State.FINAL == next.state()) break;
 
-            boolean err = !transactionResult.isSuccessful() || transactionResult.getGasUsed() < 0;
-            long gasUsed = err ? prevGasLimit : transactionResult.getGasUsed();
+            processingResult = doProcessCall(params, next.value());
+            boolean err = !processingResult.isSuccessful() || processingResult.getGasUsed() < 0;
+            long gasUsed = err ? prevGasLimit : processingResult.getGasUsed();
 
-            if (err || gasUsed == 0) {
-                lo = mid;
-            } else {
-                hi = mid;
-                if (Math.abs(prevGasLimit - mid) < minDiffBetweenIterations) {
-                    lo = hi;
-                }
-            }
-            prevGasLimit = mid;
+            last = next.value() > gasUsed ? TOO_HIGH : TOO_LOW;
+            prevGasLimit = gasUsed;
         }
-        return hi;
+
+
+        return Long.toHexString(next.value());
     }
+
+
+//    private String estimateGas(final CallServiceParameters params) {
+//        if (params.getGas() > properties.getMaxGasToUseLimit() || params.getGas() < properties.getMinGasToUseLimit()) {
+//            throw new InvalidParametersException("Invalid gas value");
+//        }
+//        LongFunction<HederaEvmTransactionProcessingResult> callProcessor = gas -> doProcessCall(params, gas);
+//        HederaEvmTransactionProcessingResult initialCallResult = callProcessor.apply(params.getGas());
+//        validateTxnResult(initialCallResult, ETH_ESTIMATE_GAS);
+//        final long gasUsedByInitialCall = initialCallResult.getGasUsed();
+//
+//        long estimatedGas =
+//                binarySearch(
+//                        gas -> doProcessCall(params, gas),
+//                        gasUsedByInitialCall,
+//                        params.getGas(),
+//                        properties.getDiffBetweenIterations());
+//
+//        return Long.toHexString(estimatedGas);
+//    }
+//
+//
+//    private long binarySearch(LongFunction<HederaEvmTransactionProcessingResult> CallProcessor, long lo, long hi,
+//                              long minDiffBetweenIterations) {
+//        BinarySearchIndexGenerator binaryGenerator = new BinarySearchIndexGenerator(lo, hi);
+//        long prevGasLimit = lo;
+//        BinarySearchIndexGenerator.Last last = TOO_LOW;
+//        BinarySearchIndexGenerator.Next next = null;
+//        do {
+//            next = binaryGenerator.next(last);
+//            HederaEvmTransactionProcessingResult transactionResult = CallProcessor.apply(next.value());
+//
+//            boolean err = !transactionResult.isSuccessful() || transactionResult.getGasUsed() < 0;
+//            long gasUsed = err ? prevGasLimit : transactionResult.getGasUsed();
+//
+//            if (err || gasUsed == 0) {
+//                last = TOO_LOW;
+//            } else {
+//                last = TOO_LOW;
+//            }
+//            prevGasLimit = next.value();
+//        }while (!next.state().equals(BinarySearchIndexGenerator.State.FINAL));
+//        return next.value();
+//    }
 
     private HederaEvmTransactionProcessingResult doProcessCall(final CallServiceParameters params, final long estimatedGas) {
         HederaEvmTransactionProcessingResult transactionResult;

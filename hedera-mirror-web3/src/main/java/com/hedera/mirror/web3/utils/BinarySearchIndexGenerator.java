@@ -30,7 +30,7 @@ public class BinarySearchIndexGenerator {
     /** Returned to caller as the next generated value for the binary search */
     public record Next(State state, long value) {}
 
-    protected BinarySearchIndexGenerator(final long low, final long high) {
+    public BinarySearchIndexGenerator(final long low, final long high) {
         if (high < low) throw new IllegalArgumentException("high < low");
 
         this.initialLow = low;
