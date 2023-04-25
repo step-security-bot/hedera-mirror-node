@@ -25,6 +25,7 @@ import static org.apache.logging.log4j.util.Strings.EMPTY;
 import com.google.common.base.Stopwatch;
 import com.hedera.mirror.web3.evm.contracts.execution.MirrorEvmTxProcessorFacade;
 import com.hedera.mirror.web3.evm.properties.MirrorNodeEvmProperties;
+import com.hedera.mirror.web3.evm.utils.BinaryGasEstimator;
 import com.hedera.mirror.web3.exception.InvalidTransactionException;
 import com.hedera.mirror.web3.service.model.CallServiceParameters;
 import com.hedera.mirror.web3.service.model.CallServiceParameters.CallType;
@@ -85,8 +86,10 @@ public class ContractCallService {
         validateResult(processingResult, ETH_ESTIMATE_GAS);
 
         final var gasUsedByInitialCall = processingResult.getGasUsed();
-        final var estimatedGas = binarySearch(params, gasUsedByInitialCall, params.getGas());
-
+//        final var estimatedGas = binarySearch(params, gasUsedByInitialCall, params.getGas());
+        final var estimatedGas = BinaryGasEstimator.search(
+                (rs, iterations) -> updateGasMetric(ETH_ESTIMATE_GAS, rs, iterations),
+                gas -> doProcessCall(params, gas),gasUsedByInitialCall, params.getGas());
         return Bytes.ofUnsignedLong(estimatedGas).toHexString();
     }
 
