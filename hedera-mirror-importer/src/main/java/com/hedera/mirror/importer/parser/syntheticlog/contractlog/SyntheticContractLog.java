@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
-package com.hedera.mirror.importer.parser.contractlog;
+package com.hedera.mirror.importer.parser.syntheticlog.contractlog;
 
 import com.hedera.mirror.common.domain.entity.EntityId;
 import com.hedera.mirror.common.domain.transaction.RecordItem;
 
-public class TransferContractLog extends AbstractSyntheticContractLog {
-    public TransferContractLog(
-            RecordItem recordItem, EntityId tokenId, EntityId senderId, EntityId receiverId, long amount) {
-        super(
-                recordItem,
-                tokenId,
-                TRANSFER_SIGNATURE,
-                entityIdToBytes(senderId),
-                entityIdToBytes(receiverId),
-                null,
-                longToBytes(amount));
-    }
+public interface SyntheticContractLog {
+    RecordItem getRecordItem();
+
+    EntityId getEntityId();
+
+    byte[] getTopic0();
+
+    byte[] getTopic1();
+
+    byte[] getTopic2();
+
+    byte[] getTopic3();
+
+    byte[] getData();
 }

@@ -31,11 +31,13 @@ import com.hedera.mirror.common.domain.transaction.RecordItem;
 import com.hedera.mirror.common.domain.transaction.Transaction;
 import com.hedera.mirror.common.domain.transaction.TransactionType;
 import com.hedera.mirror.importer.domain.EntityIdService;
-import com.hedera.mirror.importer.parser.contractlog.ApproveAllowanceContractLog;
-import com.hedera.mirror.importer.parser.contractlog.ApproveAllowanceIndexedContractLog;
-import com.hedera.mirror.importer.parser.contractlog.ApproveForAllAllowanceContractLog;
-import com.hedera.mirror.importer.parser.contractlog.SyntheticContractLogService;
 import com.hedera.mirror.importer.parser.record.entity.EntityListener;
+import com.hedera.mirror.importer.parser.syntheticlog.SyntheticLogService;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.ApproveAllowanceContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.ApproveAllowanceIndexedContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.ApproveForAllAllowanceContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractresult.ApproveAllowanceContractResult;
+import com.hedera.mirror.importer.parser.syntheticlog.contractresult.ApproveForAllAllowanceContractResult;
 import com.hederahashgraph.api.proto.java.AccountID;
 import jakarta.inject.Named;
 import java.util.HashMap;
@@ -52,7 +54,7 @@ class CryptoApproveAllowanceTransactionHandler implements TransactionHandler {
 
     private final EntityListener entityListener;
 
-    private final SyntheticContractLogService syntheticContractLogService;
+    private final SyntheticLogService syntheticLogService;
 
     @Override
     public EntityId getEntity(RecordItem recordItem) {
@@ -143,8 +145,11 @@ class CryptoApproveAllowanceTransactionHandler implements TransactionHandler {
                 if (nftSerialAllowanceState.putIfAbsent(nft.getId(), nft) == null) {
                     entityListener.onNft(nft);
                     if (!hasApprovedForAll) {
-                        syntheticContractLogService.create(new ApproveAllowanceIndexedContractLog(
-                                recordItem, tokenId, ownerAccountId, spender, serialNumber));
+                        syntheticLogService.create(
+                                recordItem,
+                                new ApproveAllowanceIndexedContractLog(
+                                        recordItem, tokenId, ownerAccountId, spender, serialNumber),
+                                new ApproveAllowanceContractResult(recordItem, tokenId, ownerAccountId));
                     }
                 }
             }
@@ -174,8 +179,11 @@ class CryptoApproveAllowanceTransactionHandler implements TransactionHandler {
 
             if (nftAllowanceState.putIfAbsent(nftAllowance.getId(), nftAllowance) == null) {
                 entityListener.onNftAllowance(nftAllowance);
-                syntheticContractLogService.create(new ApproveForAllAllowanceContractLog(
-                        recordItem, tokenId, ownerAccountId, spender, approvedForAll));
+                syntheticLogService.create(
+                        recordItem,
+                        new ApproveForAllAllowanceContractLog(
+                                recordItem, tokenId, ownerAccountId, spender, approvedForAll),
+                        new ApproveForAllAllowanceContractResult(recordItem, tokenId, ownerAccountId));
             }
         }
     }
@@ -208,8 +216,11 @@ class CryptoApproveAllowanceTransactionHandler implements TransactionHandler {
 
             if (tokenAllowanceState.putIfAbsent(tokenAllowance.getId(), tokenAllowance) == null) {
                 entityListener.onTokenAllowance(tokenAllowance);
-                syntheticContractLogService.create(new ApproveAllowanceContractLog(
-                        recordItem, tokenId, ownerAccountId, spenderId, tokenApproval.getAmount()));
+                syntheticLogService.create(
+                        recordItem,
+                        new ApproveAllowanceContractLog(
+                                recordItem, tokenId, ownerAccountId, spenderId, tokenApproval.getAmount()),
+                        new ApproveAllowanceContractResult(recordItem, tokenId, ownerAccountId));
             }
         }
     }

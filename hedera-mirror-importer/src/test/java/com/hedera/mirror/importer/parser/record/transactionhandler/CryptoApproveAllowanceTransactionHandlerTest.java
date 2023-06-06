@@ -102,8 +102,7 @@ class CryptoApproveAllowanceTransactionHandlerTest extends AbstractTransactionHa
 
     @Override
     protected TransactionHandler getTransactionHandler() {
-        return new CryptoApproveAllowanceTransactionHandler(
-                entityIdService, entityListener, syntheticContractLogService);
+        return new CryptoApproveAllowanceTransactionHandler(entityIdService, entityListener, syntheticLogService);
     }
 
     @Override

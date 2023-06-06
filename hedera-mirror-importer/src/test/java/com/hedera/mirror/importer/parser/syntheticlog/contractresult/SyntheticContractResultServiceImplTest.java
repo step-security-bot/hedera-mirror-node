@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hedera.mirror.importer.parser.contractlog;
+package com.hedera.mirror.importer.parser.syntheticlog.contractresult;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -35,14 +35,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class SyntheticContractLogServiceImplTest {
+class SyntheticContractResultServiceImplTest {
     private final RecordItemBuilder recordItemBuilder = new RecordItemBuilder();
     private final EntityProperties entityProperties = new EntityProperties();
 
     @Mock
     private EntityListener entityListener;
 
-    private SyntheticContractLogService syntheticContractLogService;
+    private SyntheticContractResultService syntheticContractResultService;
 
     private RecordItem recordItem;
     private EntityId entityTokenId;
@@ -52,7 +52,7 @@ class SyntheticContractLogServiceImplTest {
 
     @BeforeEach
     void beforeEach() {
-        syntheticContractLogService = new SyntheticContractLogServiceImpl(entityListener, entityProperties);
+        syntheticContractResultService = new SyntheticContractResultServiceImpl(entityListener, entityProperties);
         recordItem = recordItemBuilder.tokenMint(TokenType.FUNGIBLE_COMMON).build();
 
         TokenID tokenId = recordItem.getTransactionBody().getTokenMint().getToken();
@@ -66,34 +66,22 @@ class SyntheticContractLogServiceImplTest {
     @Test
     @DisplayName("Should be able to create valid synthetic contract log")
     void createValid() {
-        syntheticContractLogService.create(
-                new TransferContractLog(recordItem, entityTokenId, senderId, receiverId, amount));
-        verify(entityListener, times(1)).onContractLog(any());
+        syntheticContractResultService.create(new TransferContractResult(recordItem, entityTokenId, senderId));
+        verify(entityListener, times(1)).onContractResult(any());
     }
 
     @Test
     @DisplayName("Should be able to create valid synthetic contract log with indexed value")
     void createValidIndexed() {
-        syntheticContractLogService.create(
-                new TransferIndexedContractLog(recordItem, entityTokenId, senderId, receiverId, amount));
-        verify(entityListener, times(1)).onContractLog(any());
-    }
-
-    @Test
-    @DisplayName("Should not create synthetic contract log with contract")
-    void createWithContract() {
-        recordItem = recordItemBuilder.contractCall().build();
-        syntheticContractLogService.create(
-                new TransferContractLog(recordItem, entityTokenId, senderId, receiverId, amount));
-        verify(entityListener, times(0)).onContractLog(any());
+        syntheticContractResultService.create(new TransferContractResult(recordItem, entityTokenId, senderId));
+        verify(entityListener, times(1)).onContractResult(any());
     }
 
     @Test
     @DisplayName("Should not create synthetic contract log with entity property turned off")
     void createTurnedOff() {
-        entityProperties.getPersist().setSyntheticContractLogs(false);
-        syntheticContractLogService.create(
-                new TransferContractLog(recordItem, entityTokenId, senderId, receiverId, amount));
-        verify(entityListener, times(0)).onContractLog(any());
+        entityProperties.getPersist().setSyntheticContractResults(false);
+        syntheticContractResultService.create(new TransferContractResult(recordItem, entityTokenId, senderId));
+        verify(entityListener, times(0)).onContractResult(any());
     }
 }

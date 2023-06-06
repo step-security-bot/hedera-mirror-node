@@ -44,13 +44,14 @@ import com.hedera.mirror.importer.domain.EntityIdService;
 import com.hedera.mirror.importer.domain.TransactionFilterFields;
 import com.hedera.mirror.importer.exception.ImporterException;
 import com.hedera.mirror.importer.parser.CommonParserProperties;
-import com.hedera.mirror.importer.parser.contractlog.SyntheticContractLogService;
-import com.hedera.mirror.importer.parser.contractlog.TransferContractLog;
-import com.hedera.mirror.importer.parser.contractlog.TransferIndexedContractLog;
 import com.hedera.mirror.importer.parser.record.NonFeeTransferExtractionStrategy;
 import com.hedera.mirror.importer.parser.record.RecordItemListener;
 import com.hedera.mirror.importer.parser.record.transactionhandler.TransactionHandler;
 import com.hedera.mirror.importer.parser.record.transactionhandler.TransactionHandlerFactory;
+import com.hedera.mirror.importer.parser.syntheticlog.SyntheticLogService;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.TransferContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.TransferIndexedContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractresult.TransferContractResult;
 import com.hederahashgraph.api.proto.java.AccountAmount;
 import com.hederahashgraph.api.proto.java.NftTransfer;
 import com.hederahashgraph.api.proto.java.ResponseCodeEnum;
@@ -82,7 +83,7 @@ public class EntityRecordItemListener implements RecordItemListener {
     private final EntityProperties entityProperties;
     private final NonFeeTransferExtractionStrategy nonFeeTransfersExtractor;
     private final TransactionHandlerFactory transactionHandlerFactory;
-    private final SyntheticContractLogService syntheticContractLogService;
+    private final SyntheticLogService syntheticLogService;
 
     @Override
     public void onItem(RecordItem recordItem) throws ImporterException {
@@ -397,8 +398,10 @@ public class EntityRecordItemListener implements RecordItemListener {
         if (isMint || isWipeOrBurn) {
             EntityId senderId = amount < 0 ? accountId : EntityId.EMPTY;
             EntityId receiverId = amount > 0 ? accountId : EntityId.EMPTY;
-            syntheticContractLogService.create(
-                    new TransferContractLog(recordItem, tokenId, senderId, receiverId, Math.abs(amount)));
+            syntheticLogService.create(
+                    recordItem,
+                    new TransferContractLog(recordItem, tokenId, senderId, receiverId, Math.abs(amount)),
+                    new TransferContractResult(recordItem, tokenId, senderId));
         }
     }
 
@@ -414,8 +417,10 @@ public class EntityRecordItemListener implements RecordItemListener {
             EntityId senderId = i == 0
                     ? EntityId.of(tokenTransfers.get(1).getAccountID())
                     : EntityId.of(tokenTransfers.get(0).getAccountID());
-            syntheticContractLogService.create(
-                    new TransferContractLog(recordItem, tokenId, senderId, accountId, amount));
+            syntheticLogService.create(
+                    recordItem,
+                    new TransferContractLog(recordItem, tokenId, senderId, accountId, amount),
+                    new TransferContractResult(recordItem, tokenId, senderId));
         }
     }
 
@@ -502,8 +507,10 @@ public class EntityRecordItemListener implements RecordItemListener {
             if (!EntityId.isEmpty(receiverId)) {
                 transferNftOwnership(consensusTimestamp, serialNumber, entityTokenId, receiverId);
             }
-            syntheticContractLogService.create(
-                    new TransferIndexedContractLog(recordItem, entityTokenId, senderId, receiverId, serialNumber));
+            syntheticLogService.create(
+                    recordItem,
+                    new TransferIndexedContractLog(recordItem, entityTokenId, senderId, receiverId, serialNumber),
+                    new TransferContractResult(recordItem, entityTokenId, senderId));
         }
     }
 

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package com.hedera.mirror.importer.parser.contractlog;
+package com.hedera.mirror.importer.parser.syntheticlog.contractlog;
 
 import com.hedera.mirror.common.domain.contract.ContractLog;
-import com.hedera.mirror.common.domain.transaction.RecordItem;
 import com.hedera.mirror.importer.parser.record.entity.EntityListener;
 import com.hedera.mirror.importer.parser.record.entity.EntityProperties;
 import jakarta.inject.Named;
@@ -33,7 +32,7 @@ public class SyntheticContractLogServiceImpl implements SyntheticContractLogServ
 
     @Override
     public void create(SyntheticContractLog log) {
-        if (isContract(log.getRecordItem()) || !entityProperties.getPersist().isSyntheticContractLogs()) {
+        if (!entityProperties.getPersist().isSyntheticContractLogs()) {
             return;
         }
 
@@ -56,10 +55,5 @@ public class SyntheticContractLogServiceImpl implements SyntheticContractLogServ
         contractLog.setTransactionIndex(log.getRecordItem().getTransactionIndex());
         contractLog.setTransactionHash(log.getRecordItem().getTransactionHash());
         entityListener.onContractLog(contractLog);
-    }
-
-    private boolean isContract(RecordItem recordItem) {
-        return recordItem.getTransactionRecord().hasContractCallResult()
-                || recordItem.getTransactionRecord().hasContractCreateResult();
     }
 }

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.hedera.mirror.importer.parser.contractlog;
+package com.hedera.mirror.importer.parser.syntheticlog.contractresult;
 
 /**
  * This service is used to centralize the conversion logic from record stream
  * items to separate
- * synthetic events for HAPI token transactions
+ * synthetic contract results for HAPI token transactions
  */
-public interface SyntheticContractLogService {
-    void create(SyntheticContractLog log);
+public interface SyntheticContractResultService {
+    void create(SyntheticContractResult result);
 }

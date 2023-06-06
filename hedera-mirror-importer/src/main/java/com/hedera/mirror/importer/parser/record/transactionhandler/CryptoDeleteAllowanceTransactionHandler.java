@@ -21,9 +21,10 @@ import com.hedera.mirror.common.domain.token.Nft;
 import com.hedera.mirror.common.domain.transaction.RecordItem;
 import com.hedera.mirror.common.domain.transaction.Transaction;
 import com.hedera.mirror.common.domain.transaction.TransactionType;
-import com.hedera.mirror.importer.parser.contractlog.ApproveAllowanceIndexedContractLog;
-import com.hedera.mirror.importer.parser.contractlog.SyntheticContractLogService;
 import com.hedera.mirror.importer.parser.record.entity.EntityListener;
+import com.hedera.mirror.importer.parser.syntheticlog.SyntheticLogService;
+import com.hedera.mirror.importer.parser.syntheticlog.contractlog.ApproveAllowanceIndexedContractLog;
+import com.hedera.mirror.importer.parser.syntheticlog.contractresult.ApproveAllowanceContractResult;
 import jakarta.inject.Named;
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +34,7 @@ class CryptoDeleteAllowanceTransactionHandler implements TransactionHandler {
 
     private final EntityListener entityListener;
 
-    private final SyntheticContractLogService syntheticContractLogService;
+    private final SyntheticLogService syntheticLogService;
 
     @Override
     public EntityId getEntity(RecordItem recordItem) {
@@ -61,8 +62,11 @@ class CryptoDeleteAllowanceTransactionHandler implements TransactionHandler {
                 var nft = new Nft(serialNumber, tokenId);
                 nft.setModifiedTimestamp(recordItem.getConsensusTimestamp());
                 entityListener.onNft(nft);
-                syntheticContractLogService.create(new ApproveAllowanceIndexedContractLog(
-                        recordItem, tokenId, ownerId, EntityId.EMPTY, serialNumber));
+                syntheticLogService.create(
+                        recordItem,
+                        new ApproveAllowanceIndexedContractLog(
+                                recordItem, tokenId, ownerId, EntityId.EMPTY, serialNumber),
+                        new ApproveAllowanceContractResult(recordItem, tokenId, ownerId));
             }
         }
     }
