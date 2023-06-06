@@ -45,4 +45,8 @@ public abstract class AbstractSyntheticContractResult implements SyntheticContra
     static byte[] hexToBytes(String hex) {
         return Bytes.fromHexString(hex).toArrayUnsafe();
     }
+
+    static String longToPaddedHex(long value) {
+        return String.format("%064d", value);
+    }
 }

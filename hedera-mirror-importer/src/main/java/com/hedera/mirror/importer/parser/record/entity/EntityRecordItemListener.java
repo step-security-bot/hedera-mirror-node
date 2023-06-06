@@ -401,7 +401,7 @@ public class EntityRecordItemListener implements RecordItemListener {
             syntheticLogService.create(
                     recordItem,
                     new TransferContractLog(recordItem, tokenId, senderId, receiverId, Math.abs(amount)),
-                    new TransferContractResult(recordItem, tokenId, senderId));
+                    new TransferContractResult(recordItem, tokenId, senderId, receiverId, Math.abs(amount)));
         }
     }
 
@@ -420,7 +420,7 @@ public class EntityRecordItemListener implements RecordItemListener {
             syntheticLogService.create(
                     recordItem,
                     new TransferContractLog(recordItem, tokenId, senderId, accountId, amount),
-                    new TransferContractResult(recordItem, tokenId, senderId));
+                    new TransferContractResult(recordItem, tokenId, senderId, accountId, amount));
         }
     }
 
@@ -510,7 +510,7 @@ public class EntityRecordItemListener implements RecordItemListener {
             syntheticLogService.create(
                     recordItem,
                     new TransferIndexedContractLog(recordItem, entityTokenId, senderId, receiverId, serialNumber),
-                    new TransferContractResult(recordItem, entityTokenId, senderId));
+                    new TransferContractResult(recordItem, entityTokenId, senderId, receiverId, serialNumber));
         }
     }
 

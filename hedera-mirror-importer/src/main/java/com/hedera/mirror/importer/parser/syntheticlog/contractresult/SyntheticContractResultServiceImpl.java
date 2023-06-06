@@ -53,16 +53,3 @@ public class SyntheticContractResultServiceImpl implements SyntheticContractResu
         entityListener.onContractResult(contractResult);
     }
 }
-
-// - function_parameters - not null - we don’t have enough info to populate ❗
-//        - gas_limit - not null - we don’t have enough info to populate ❗
-//        - function_result - can be null - we don’t have enough info to populate
-//        - gas_used - can be null - we don’t have enough info to populate
-//        - amount - can be null - we don’t have enough info to populate
-//        - bloom - can be null - we don’t have enough info to populate
-//        - call_result - can be null - we don’t have enough info to populate
-//        - created_contract_ids - can be null - we don’t have enough info to populate
-//        - error_message - can be null - we don’t have enough info to populate
-//        - sender_id - can be null - we have info to populate ✅
-//        - failed_initcode - can be null - we don’t have enough info to populate
-//        - transaction_result - not null - we have info to populate ✅
