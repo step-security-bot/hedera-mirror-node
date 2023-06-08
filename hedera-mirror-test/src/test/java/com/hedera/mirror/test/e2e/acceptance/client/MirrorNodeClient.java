@@ -29,6 +29,7 @@ import com.hedera.mirror.test.e2e.acceptance.props.ContractCallRequest;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorNetworkNode;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorNetworkNodes;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorNetworkStake;
+import com.hedera.mirror.test.e2e.acceptance.props.*;
 import com.hedera.mirror.test.e2e.acceptance.response.ContractCallResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorAccountResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorContractResponse;
@@ -42,11 +43,12 @@ import com.hedera.mirror.test.e2e.acceptance.response.MirrorTokenRelationshipRes
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorTokenResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorTransactionsResponse;
 import com.hedera.mirror.test.e2e.acceptance.util.TestUtil;
-import jakarta.inject.Named;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.inject.Named;
 import lombok.NonNull;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
@@ -196,7 +198,19 @@ public class MirrorNodeClient {
 
     public ContractCallResponse contractsCall(String data, String to, String from) {
         ContractCallRequest contractCallRequest =
-                new ContractCallRequest("latest", data, false, from, 100000000, 100000000, to, 0);
+                new ContractCallRequest("latest", data, false, from, 15000000, 100000000, to, 0);
+
+        return callPostRestEndpoint("/contracts/call", ContractCallResponse.class, contractCallRequest);
+    }
+
+    public ContractCallResponse contractEstimate(String data, String to, String from) {
+        ContractEstimateRequestWithFrom contractCallRequest = new ContractEstimateRequestWithFrom(data, true, to, from);
+
+        return callPostRestEndpoint("/contracts/call", ContractCallResponse.class, contractCallRequest);
+    }
+
+    public ContractCallResponse contractEstimate(String data, String to) {
+        ContractEstimateRequest contractCallRequest = new ContractEstimateRequest(data, true, to);
 
         return callPostRestEndpoint("/contracts/call", ContractCallResponse.class, contractCallRequest);
     }
@@ -316,11 +330,11 @@ public class MirrorNodeClient {
                 .block();
     }
 
-    private <T> T callPostRestEndpoint(String uri, Class<T> classType, ContractCallRequest contractCallRequest) {
-        return web3Client
-                .post()
+    private <T, R> T callPostRestEndpoint(String uri, Class<T> classType, R request) {
+        final var web3Client = webClient.mutate().baseUrl("http://localhost:8545/api/v1").build();
+        return web3Client.post()
                 .uri(uri)
-                .body(Mono.just(contractCallRequest), ContractCallRequest.class)
+                .body(Mono.just(request), request.getClass())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .bodyToMono(classType)

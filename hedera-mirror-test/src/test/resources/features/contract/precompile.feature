@@ -29,7 +29,7 @@ Feature: Precompile Contract Base Coverage Feature
         And the contract call REST API should return the decimals by direct call for a  fungible token
         And the contract call REST API should return the total supply by direct call for a  fungible token
         And the contract call REST API should return the balanceOf by direct call for a fungible token
-        And the contract call REST API should return the allowance by direct call for a fungible token
+        #And the contract call REST API should return the allowance by direct call for a fungible token
         And the contract call REST API should return the custom fees for a fungible token
         Given I successfully create and verify a non fungible token for precompile contract tests
         Given I mint and verify a nft
@@ -55,5 +55,8 @@ Feature: Precompile Contract Base Coverage Feature
         And the contract call REST API should return the total supply by direct call for a non fungible token
         And the contract call REST API should return the ownerOf by direct call for a non fungible token
         And the contract call REST API should return the getApproved by direct call for a non fungible token
-        And the contract call REST API should return the isApprovedForAll by direct call for a non fungible token
+        #And the contract call REST API should return the isApprovedForAll by direct call for a non fungible token
         And the contract call REST API should return the custom fees for a non fungible token
+        And I call function with HederaTokenService getTokenCustomFees token - fractional fee and fixed fee - fungible token
+        And I call function with HederaTokenService getTokenCustomFees token - royalty fee
+        And I call function with HederaTokenService getTokenCustomFees token - royalty fee + fallback

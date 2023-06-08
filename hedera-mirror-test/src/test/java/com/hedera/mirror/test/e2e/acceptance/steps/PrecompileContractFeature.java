@@ -781,6 +781,67 @@ public class PrecompileContractFeature extends AbstractFeature {
         assertThat(royaltyFees).isEmpty();
     }
 
+    //ETHCALL-032
+    @And("I call function with HederaTokenService getTokenCustomFees token - fractional fee and fixed fee - fungible token")
+    public void getCustomFeesForFungibleTokenFractionalAndFixedFees() throws Exception {
+        ContractCallResponse response = mirrorClient.contractsCall(
+                GET_CUSTOM_FEES_FOR_TOKEN_SELECTOR
+                        + to32BytesString(tokenIds.get(0).toSolidityAddress()),
+                contractId.toSolidityAddress(),
+                contractClient.getClientAddress());
+        Tuple result = decodeFunctionResult("getCustomFeesForToken", response);
+        assertThat(result).isNotEmpty();
+        baseFixedFeeCheck(result.get(0));
+        Tuple[] fractionalFees = result.get(1);
+        Tuple fractionalFee = fractionalFees[0];
+        assertThat(fractionalFees).isNotEmpty();
+        assertThat((long) fractionalFee.get(0)).isOne();
+        assertThat((long) fractionalFee.get(1)).isEqualTo(10);
+        assertThat((long) fractionalFee.get(2)).isZero();
+        assertThat((long) fractionalFee.get(3)).isZero();
+        assertFalse((boolean) fractionalFee.get(4));
+        assertThat(fractionalFee.get(5).toString().toLowerCase())
+                .isEqualTo("0x" + contractClient.getClientAddress().toLowerCase());
+    }
+
+    //ETHCALL-033
+    @And("I call function with HederaTokenService getTokenCustomFees token - royalty fee")
+    public void getCustomFeesForFungibleTokenRoyaltyFee() throws Exception {
+        ContractCallResponse response = mirrorClient.contractsCall(
+                GET_CUSTOM_FEES_FOR_TOKEN_SELECTOR
+                        + to32BytesString(tokenIds.get(1).toSolidityAddress()),
+                contractId.toSolidityAddress(),
+                contractClient.getClientAddress());
+        Tuple result = decodeFunctionResult("getCustomFeesForToken", response);
+        assertThat(result).isNotEmpty();
+        Tuple[] fractionalFees = result.get(1);
+        Tuple[] royaltyFees = result.get(2);
+        Tuple royaltyFee = royaltyFees[0];
+        assertThat(fractionalFees).isEmpty();
+        assertThat((long) royaltyFee.get(0)).isEqualTo(10);
+        assertThat((long) royaltyFee.get(1)).isEqualTo(tokenIds.get(1).toSolidityAddress());
+        assertThat((long) royaltyFee.get(2)).isZero();
+        assertThat(royaltyFee.get(4).toString().toLowerCase())
+                .isEqualTo("0x" + contractClient.getClientAddress().toLowerCase());
+    }
+
+    //ETHCALL-034
+    @And("I call function with HederaTokenService getTokenCustomFees token - royalty fee + fallback")
+    public void getCustomFeesForFungibleTokenRoyaltyFeeAndFallback() throws Exception {
+        ContractCallResponse response = mirrorClient.contractsCall(
+                GET_CUSTOM_FEES_FOR_TOKEN_SELECTOR
+                        + to32BytesString(tokenIds.get(1).toSolidityAddress()),
+                contractId.toSolidityAddress(),
+                contractClient.getClientAddress());
+        Tuple result = decodeFunctionResult("getCustomFeesForToken", response);
+        assertThat(result).isNotEmpty();
+        baseFixedFeeCheck(result.get(0));
+        Tuple[] fractionalFees = result.get(1);
+        Tuple[] royaltyFees = result.get(2);
+        assertThat(fractionalFees).isEmpty();
+        assertThat(royaltyFees).isEmpty();
+    }
+
     private void baseFixedFeeCheck(Tuple[] fixedFees) {
         assertThat(fixedFees).isNotEmpty();
         Tuple fixedFee = fixedFees[0];
