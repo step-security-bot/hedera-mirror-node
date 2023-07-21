@@ -39,7 +39,9 @@ import com.hedera.services.store.models.Id;
 import com.hedera.services.utils.EntityIdUtils;
 import com.hedera.services.store.models.Id;
 import com.hedera.services.utils.EntityIdUtils;
+import com.hedera.services.store.models.Id;
 import com.hederahashgraph.api.proto.java.AccountID;
+import com.hederahashgraph.api.proto.java.CryptoApproveAllowanceTransactionBody;
 import com.hederahashgraph.api.proto.java.ContractCallTransactionBody;
 import com.hederahashgraph.api.proto.java.ContractID;
 import com.hederahashgraph.api.proto.java.CryptoApproveAllowanceTransactionBody;
@@ -85,6 +87,10 @@ import java.util.Objects;
 import lombok.NonNull;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import jakarta.annotation.Nullable;
+import java.util.List;
+import java.util.Objects;
+import lombok.NonNull;
 
 public class SyntheticTxnFactory {
     public static final String HTS_PRECOMPILED_CONTRACT_ADDRESS = "0x167";
