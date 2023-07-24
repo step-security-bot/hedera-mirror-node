@@ -19,14 +19,14 @@ package com.hedera.services.store.contracts.precompile.impl;
 import static com.hedera.services.store.contracts.precompile.AbiConstants.ABI_ID_IS_TOKEN;
 import static com.hedera.services.store.contracts.precompile.codec.DecodingFacade.convertAddressBytesToTokenID;
 
-import com.hedera.mirror.web3.evm.store.Store;
 import com.hedera.mirror.web3.evm.store.Store.OnMissing;
+import com.hedera.mirror.web3.evm.store.contract.HederaEvmStackedWorldStateUpdater;
 import com.hedera.node.app.service.evm.store.contracts.precompile.codec.EvmEncodingFacade;
 import com.hedera.node.app.service.evm.store.contracts.precompile.codec.TokenInfoWrapper;
 import com.hedera.node.app.service.evm.store.contracts.precompile.impl.EvmIsTokenPrecompile;
 import com.hedera.services.store.contracts.precompile.SyntheticTxnFactory;
 import com.hedera.services.store.contracts.precompile.codec.EncodingFacade;
-import com.hedera.services.store.contracts.precompile.codec.TokenAddressResult;
+import com.hedera.services.store.contracts.precompile.codec.IsTokenResult;
 import com.hedera.services.store.contracts.precompile.codec.RunResult;
 import com.hedera.services.store.contracts.precompile.utils.PrecompilePricingUtils;
 import com.hedera.services.store.models.Id;
@@ -47,16 +47,12 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
  */
 public class IsTokenPrecompile extends AbstractReadOnlyPrecompile implements EvmIsTokenPrecompile {
 
-    private final Store store;
-
     public IsTokenPrecompile(
             final SyntheticTxnFactory syntheticTxnFactory,
             final EncodingFacade encoder,
             final EvmEncodingFacade evmEncoder,
-            final PrecompilePricingUtils pricingUtils,
-            final Store store) {
+            final PrecompilePricingUtils pricingUtils) {
         super(syntheticTxnFactory, encoder, evmEncoder, pricingUtils);
-        this.store = store;
     }
 
     @Override
@@ -66,17 +62,20 @@ public class IsTokenPrecompile extends AbstractReadOnlyPrecompile implements Evm
 
     @Override
     public RunResult run(MessageFrame frame, TransactionBody transactionBody) {
+        final var store = ((HederaEvmStackedWorldStateUpdater) frame.getWorldUpdater()).getStore();
+
         final var tokenInfoWrapper = decodeIsToken(frame.getInputData()).token();
         final var tokenAddress = Id.fromGrpcToken(tokenInfoWrapper).asEvmAddress();
-        return new TokenAddressResult(tokenAddress);
+        final var token = store.getToken(tokenAddress, OnMissing.DONT_THROW);
+        final var isToken = !token.isEmptyToken();
+
+        return new IsTokenResult(isToken);
     }
 
     @Override
     public Bytes getSuccessResultFor(final RunResult runResult) {
-        final var readOnlyResult = (TokenAddressResult) runResult;
-        final var token = store.getToken(readOnlyResult.tokenAddress(), OnMissing.DONT_THROW);
-        final var isToken = !token.isEmptyToken();
-        return evmEncoder.encodeIsToken(isToken);
+        final var readOnlyResult = (IsTokenResult) runResult;
+        return evmEncoder.encodeIsToken(readOnlyResult.isToken());
     }
 
     public static TokenInfoWrapper<TokenID> decodeIsToken(final Bytes input) {

@@ -20,6 +20,7 @@ import com.hedera.mirror.web3.evm.pricing.RatesAndFeesLoader;
 import com.hedera.mirror.web3.evm.properties.MirrorNodeEvmProperties;
 import com.hedera.mirror.web3.evm.store.contract.EntityAddressSequencer;
 import com.hedera.node.app.service.evm.contracts.execution.EvmProperties;
+import com.hedera.node.app.service.evm.store.contracts.precompile.codec.EvmEncodingFacade;
 import com.hedera.services.contracts.gascalculator.GasCalculatorHederaV22;
 import com.hedera.services.fees.BasicHbarCentExchange;
 import com.hedera.services.fees.FeeCalculator;
@@ -57,6 +58,7 @@ import com.hedera.services.store.contracts.precompile.impl.DissociatePrecompile;
 import com.hedera.services.store.contracts.precompile.impl.ERCTransferPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.FreezeTokenPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.GrantKycPrecompile;
+import com.hedera.services.store.contracts.precompile.impl.IsTokenPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.MintPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.MultiAssociatePrecompile;
 import com.hedera.services.store.contracts.precompile.impl.MultiDissociatePrecompile;
@@ -252,6 +254,11 @@ public class ServicesConfiguration {
     @Bean
     SyntheticTxnFactory syntheticTxnFactory() {
         return new SyntheticTxnFactory();
+    }
+
+    @Bean
+    EvmEncodingFacade evmEncodingFacade() {
+        return new EvmEncodingFacade();
     }
 
     @Bean
@@ -562,5 +569,14 @@ public class ServicesConfiguration {
     @Bean
     TokenUpdateLogic tokenUpdateLogic(MirrorNodeEvmProperties mirrorNodeEvmProperties, OptionValidator validator) {
         return new TokenUpdateLogic(mirrorNodeEvmProperties, validator);
+    }
+
+    @Bean
+    IsTokenPrecompile isTokenPrecompile(
+            SyntheticTxnFactory syntheticTxnFactory,
+            EncodingFacade encoder,
+            EvmEncodingFacade evmEncoder,
+            PrecompilePricingUtils pricingUtils) {
+        return new IsTokenPrecompile(syntheticTxnFactory, encoder, evmEncoder, pricingUtils);
     }
 }

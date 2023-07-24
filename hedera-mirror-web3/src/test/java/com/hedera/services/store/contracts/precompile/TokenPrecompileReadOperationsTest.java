@@ -16,24 +16,18 @@
 
 package com.hedera.services.store.contracts.precompile;
 
+import static com.hedera.services.store.contracts.precompile.AbiConstants.ABI_ID_IS_TOKEN;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.contractAddress;
-import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.createTokenInfoWrapperForNonFungibleToken;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.createTokenInfoWrapperForToken;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.fungible;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.fungibleTokenAddr;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.nonFungible;
-import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.nonFungibleId;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.nonFungibleTokenAddr;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.serialNumber;
 import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.successResult;
-import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.token;
-import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.tokenMerkleId;
-import static com.hedera.services.utils.IdUtils.asToken;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-
-import static com.hedera.services.store.contracts.precompile.AbiConstants.ABI_ID_IS_TOKEN;
 
 import com.esaulpaugh.headlong.util.Integers;
 import com.hedera.mirror.web3.evm.properties.MirrorNodeEvmProperties;
@@ -50,21 +44,16 @@ import com.hedera.services.fees.calculation.UsagePricesProvider;
 import com.hedera.services.fees.pricing.AssetsLoader;
 import com.hedera.services.store.contracts.precompile.codec.EncodingFacade;
 import com.hedera.services.store.contracts.precompile.impl.IsTokenPrecompile;
-import com.hedera.services.store.contracts.precompile.impl.UnfreezeTokenPrecompile;
 import com.hedera.services.store.contracts.precompile.utils.PrecompilePricingUtils;
 import com.hedera.services.store.models.Id;
 import com.hedera.services.store.models.Token;
 import com.hedera.services.utils.accessors.AccessorFactory;
-import com.hederahashgraph.api.proto.java.TokenID;
 import com.hederahashgraph.api.proto.java.TransactionBody;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,9 +69,6 @@ class TokenPrecompileReadOperationsTest {
 
     @InjectMocks
     private MirrorNodeEvmProperties evmProperties;
-
-    @Mock
-    private GasCalculator gasCalculator;
 
     @Mock
     private MessageFrame frame;
@@ -134,7 +120,7 @@ class TokenPrecompileReadOperationsTest {
         final PrecompilePricingUtils precompilePricingUtils =
                 new PrecompilePricingUtils(assetLoader, exchange, feeCalculator, resourceCosts, accessorFactory);
         IsTokenPrecompile isTokenPrecompile =
-                new IsTokenPrecompile(syntheticTxnFactory, encoder, evmEncoder, precompilePricingUtils, store);
+                new IsTokenPrecompile(syntheticTxnFactory, encoder, evmEncoder, precompilePricingUtils);
         PrecompileMapper precompileMapper = new PrecompileMapper(Set.of(isTokenPrecompile));
         subject = new HTSPrecompiledContract(
                 infrastructureFactory, evmProperties, precompileMapper, evmHTSPrecompiledContract);
@@ -160,6 +146,7 @@ class TokenPrecompileReadOperationsTest {
                 .thenReturn(TokenInfoWrapper.forToken(fungible));
         given(evmEncoder.encodeIsToken(true)).willReturn(successResult);
         given(frame.getValue()).willReturn(Wei.ZERO);
+        given(worldUpdater.getStore()).willReturn(store);
         final var tokenInfoWrapper = createTokenInfoWrapperForToken(fungible);
         given(IsTokenPrecompile.decodeIsToken(any())).willReturn(tokenInfoWrapper);
         var token = new Token(Id.fromGrpcToken(fungible));
@@ -188,6 +175,7 @@ class TokenPrecompileReadOperationsTest {
                 .thenReturn(TokenInfoWrapper.forNonFungibleToken(nonFungible, serialNumber));
         given(evmEncoder.encodeIsToken(true)).willReturn(successResult);
         given(frame.getValue()).willReturn(Wei.ZERO);
+        given(worldUpdater.getStore()).willReturn(store);
         final var tokenInfoWrapper = createTokenInfoWrapperForToken(nonFungible);
         given(IsTokenPrecompile.decodeIsToken(any())).willReturn(tokenInfoWrapper);
         var token = new Token(Id.fromGrpcToken(nonFungible));

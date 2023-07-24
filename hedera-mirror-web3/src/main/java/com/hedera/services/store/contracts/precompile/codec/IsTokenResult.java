@@ -16,6 +16,4 @@
 
 package com.hedera.services.store.contracts.precompile.codec;
 
-import org.hyperledger.besu.datatypes.Address;
-
-public record TokenAddressResult(Address tokenAddress) implements RunResult {}
+public record IsTokenResult(boolean isToken) implements RunResult {}
