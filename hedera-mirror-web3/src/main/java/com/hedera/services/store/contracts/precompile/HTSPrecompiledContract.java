@@ -17,6 +17,7 @@
 package com.hedera.services.store.contracts.precompile;
 
 import static com.hedera.node.app.service.evm.store.contracts.HederaEvmWorldStateTokenAccount.TOKEN_PROXY_ACCOUNT_NONCE;
+import static com.hedera.node.app.service.evm.store.contracts.precompile.AbiConstants.ABI_ID_GET_TOKEN_CUSTOM_FEES;
 import static com.hedera.node.app.service.evm.store.contracts.utils.DescriptorUtils.isTokenProxyRedirect;
 import static com.hedera.node.app.service.evm.store.contracts.utils.DescriptorUtils.isViewFunction;
 import static com.hedera.node.app.service.evm.utils.ValidationUtils.validateTrue;
@@ -141,7 +142,9 @@ public class HTSPrecompiledContract implements HTSPrecompiledContractAdapter {
         After the Precompile classes are implemented, this workaround won't be needed. */
 
         // redirect operations
-        if ((isTokenProxyRedirect(input) || isViewFunction(input)) && !isNestedFunctionSelectorForWrite(input)) {
+        if ((isTokenProxyRedirect(input) || isViewFunction(input))
+                && !isNestedFunctionSelectorForWrite(input)
+                && input.getInt(0) != ABI_ID_GET_TOKEN_CUSTOM_FEES) {
             return handleReadsFromDynamicContext(input, frame);
         }
 

@@ -41,6 +41,7 @@ import com.hedera.services.store.contracts.precompile.codec.TokenExpiryWrapper;
 import com.hedera.services.store.contracts.precompile.codec.TokenKeyWrapper;
 import com.hedera.services.store.contracts.precompile.codec.WipeWrapper;
 import com.hedera.services.store.models.Id;
+import com.hedera.services.utils.EntityIdUtils;
 import com.hedera.services.utils.IdUtils;
 import com.hederahashgraph.api.proto.java.AccountID;
 import com.hederahashgraph.api.proto.java.ContractID;
@@ -76,6 +77,7 @@ public class HTSTestsUtil {
     public static final ContractID precompiledContract = asContract(asAccount("0.0.359"));
     public static final TokenID nonFungible = asToken("0.0.777");
     public static final TokenID tokenMerkleId = asToken("0.0.777");
+    public static final Address tokenMerkleAddress = EntityIdUtils.asTypedEvmAddress(tokenMerkleId);
     public static final Id accountId = Id.fromGrpcAccount(account);
     public static final Association multiAssociateOp = Association.singleAssociation(accountMerkleId, tokenMerkleId);
     public static final Dissociation multiDissociateOp =

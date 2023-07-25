@@ -96,8 +96,11 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
     void customFees(FeeCase feeCase) {
         final var functionName = "getCustomFeesForToken";
         final var functionHash = functionEncodeDecoder.functionHashFor(functionName, ABI_PATH, FUNGIBLE_TOKEN_ADDRESS);
-        final var serviceParameters = serviceParametersForExecution(functionHash, CONTRACT_ADDRESS, ETH_CALL, 0L);
+        final var serviceParameters =
+                serviceParametersForExecution(functionHash, CONTRACT_ADDRESS, ETH_ESTIMATE_GAS, 0L);
         customFeesPersist(feeCase);
+
+        final var expectedGasUsed = gasUsedAfterExecution(serviceParameters);
 
         final var callResult = contractCallService.processCall(serviceParameters);
         final var decodeResult = functionEncodeDecoder.decodeResult(functionName, ABI_PATH, callResult);

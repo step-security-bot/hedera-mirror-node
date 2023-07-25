@@ -19,6 +19,7 @@ package com.hedera.mirror.web3.evm.config;
 import com.hedera.mirror.web3.evm.pricing.RatesAndFeesLoader;
 import com.hedera.mirror.web3.evm.properties.MirrorNodeEvmProperties;
 import com.hedera.node.app.service.evm.contracts.execution.EvmProperties;
+import com.hedera.node.app.service.evm.store.contracts.precompile.codec.EvmEncodingFacade;
 import com.hedera.services.contracts.gascalculator.GasCalculatorHederaV22;
 import com.hedera.services.fees.BasicHbarCentExchange;
 import com.hedera.services.fees.FeeCalculator;
@@ -58,8 +59,7 @@ import com.hedera.services.store.contracts.precompile.impl.PausePrecompile;
 import com.hedera.services.store.contracts.precompile.impl.RevokeKycPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.SetApprovalForAllPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.TokenCreatePrecompile;
-import com.hedera.services.store.contracts.precompile.impl.UnfreezeTokenPrecompile;
-import com.hedera.services.store.contracts.precompile.impl.UnpausePrecompile;
+import com.hedera.services.store.contracts.precompile.impl.TokenGetCustomFeesPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.UnfreezeTokenPrecompile;
 import com.hedera.services.store.contracts.precompile.impl.UnpausePrecompile;
 import com.hedera.services.store.contracts.precompile.impl.WipeFungiblePrecompile;
@@ -232,6 +232,11 @@ public class ServicesConfiguration {
     @Bean
     EncodingFacade encodingFacade() {
         return new EncodingFacade();
+    }
+
+    @Bean
+    EvmEncodingFacade evmEncodingFacade() {
+        return new EvmEncodingFacade();
     }
 
     @Bean
@@ -502,5 +507,14 @@ public class ServicesConfiguration {
             SyntheticTxnFactory syntheticTxnFactory,
             PauseLogic pauseLogic) {
         return new PausePrecompile(precompilePricingUtils, syntheticTxnFactory, pauseLogic);
+    }
+
+    @Bean
+    TokenGetCustomFeesPrecompile tokenGetCustomFeesPrecompile(
+            SyntheticTxnFactory syntheticTxnFactory,
+            EncodingFacade encodingFacade,
+            EvmEncodingFacade evmEncodingFacade,
+            PrecompilePricingUtils pricingUtils) {
+        return new TokenGetCustomFeesPrecompile(syntheticTxnFactory, encodingFacade, evmEncodingFacade, pricingUtils);
     }
 }
