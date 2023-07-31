@@ -178,7 +178,7 @@ public class HTSPrecompiledContract implements HTSPrecompiledContractAdapter {
         }
 
         final var recipient = frame.getRecipientAddress();
-        // but we accept delegates iff the token redirect contract calls us,
+        // but we accept delegates if the token redirect contract calls us,
         // so if they are not a token, or on the permitted callers list, then
         // we are a delegate and we are done.
         if (isToken(frame, recipient)) {
@@ -288,6 +288,11 @@ public class HTSPrecompiledContract implements HTSPrecompiledContractAdapter {
                                 input.slice(24),
                                 aliasResolver,
                                 new ERCTransferParams(nestedFunctionSelector, senderAddress, tokenAccessor, tokenId));
+                    }
+                    case AbiConstants.ABI_ID_IS_TOKEN -> {
+                        precompile =
+                                precompileMapper.lookup(nestedFunctionSelector).orElseThrow();
+                        transactionBody = precompile.body(input, aliasResolver, new FunctionParam(functionId));
                     }
                     default -> {
                         this.precompile =

@@ -39,8 +39,20 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
     private static final String ERROR_MESSAGE = "Precompile not supported for non-static frames";
 
     @ParameterizedTest
-    @EnumSource(ContractReadFunctions.class)
-    void evmPrecompileReadOnlyTokenFunctionsTest(ContractReadFunctions contractFunc) {
+    @EnumSource(UnsupportedContractReadFunctions.class)
+    void evmPrecompileReadOnlyTokenFunctionsTestWithNonStaticFrame(UnsupportedContractReadFunctions contractFunc) {
+        final var functionHash =
+                functionEncodeDecoder.functionHashFor(contractFunc.name, ABI_PATH, contractFunc.functionParameters);
+        final var serviceParameters = serviceParametersForExecution(functionHash, CONTRACT_ADDRESS, ETH_CALL, 0L);
+        final var successfulResponse =
+                functionEncodeDecoder.encodedResultFor(contractFunc.name, ABI_PATH, contractFunc.expectedResultFields);
+
+        assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
+    }
+
+    @ParameterizedTest
+    @EnumSource(SupportedContractReadFunctions.class)
+    void evmPrecompileSupportedReadOnlyFunctionsTest(SupportedContractReadFunctions contractFunc) {
         final var functionHash =
                 functionEncodeDecoder.functionHashFor(contractFunc.name, ABI_PATH, contractFunc.functionParameters);
         final var serviceParameters =
@@ -52,18 +64,6 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
                 .as("result must be within 5-20% bigger than the gas used from the first call")
                 .isGreaterThanOrEqualTo((long) (expectedGasUsed * 1.05)) // expectedGasUsed value increased by 5%
                 .isCloseTo(expectedGasUsed, Percentage.withPercentage(20)); // Maximum percentage
-    }
-
-    @ParameterizedTest
-    @EnumSource(ContractReadFunctions.class)
-    void evmPrecompileReadOnlyTokenFunctionsTestWithNonStaticFrame(ContractReadFunctions contractFunc) {
-        final var functionHash =
-                functionEncodeDecoder.functionHashFor(contractFunc.name, ABI_PATH, contractFunc.functionParameters);
-        final var serviceParameters = serviceParametersForExecution(functionHash, CONTRACT_ADDRESS, ETH_CALL, 0L);
-        final var successfulResponse =
-                functionEncodeDecoder.encodedResultFor(contractFunc.name, ABI_PATH, contractFunc.expectedResultFields);
-
-        assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
     }
 
     @ParameterizedTest
@@ -243,7 +243,7 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
     }
 
     @RequiredArgsConstructor
-    enum ContractReadFunctions {
+    enum UnsupportedContractReadFunctions {
         IS_FROZEN("isTokenFrozen", new Address[] {FUNGIBLE_TOKEN_ADDRESS, SENDER_ADDRESS}, new Boolean[] {true}),
         IS_FROZEN_WITH_ALIAS(
                 "isTokenFrozen", new Address[] {FUNGIBLE_TOKEN_ADDRESS, SENDER_ALIAS}, new Boolean[] {true}),
@@ -251,8 +251,6 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
         IS_KYC_WITH_ALIAS("isKycGranted", new Address[] {FUNGIBLE_TOKEN_ADDRESS, SENDER_ALIAS}, new Boolean[] {true}),
         IS_KYC_FOR_NFT("isKycGranted", new Address[] {NFT_ADDRESS, SENDER_ADDRESS}, new Boolean[] {true}),
         IS_KYC_FOR_NFT_WITH_ALIAS("isKycGranted", new Address[] {NFT_ADDRESS, SENDER_ALIAS}, new Boolean[] {true}),
-        IS_TOKEN_PRECOMPILE("isTokenAddress", new Address[] {FUNGIBLE_TOKEN_ADDRESS}, new Boolean[] {true}),
-        IS_TOKEN_PRECOMPILE_NFT("isTokenAddress", new Address[] {NFT_ADDRESS}, new Boolean[] {true}),
         GET_TOKEN_DEFAULT_KYC("getTokenDefaultKyc", new Address[] {FUNGIBLE_TOKEN_ADDRESS}, new Boolean[] {true}),
         GET_TOKEN_DEFAULT_KYC_NFT("getTokenDefaultKyc", new Address[] {NFT_ADDRESS}, new Boolean[] {true}),
         GET_TOKEN_TYPE("getType", new Address[] {FUNGIBLE_TOKEN_ADDRESS}, new Long[] {0L}),
@@ -280,6 +278,16 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
         GET_TOKEN_PAUSE_KEY_FOR_NFT("getTokenKeyPublic", new Object[] {NFT_ADDRESS, 64L}, new Object[] {
             false, Address.ZERO, new byte[0], ECDSA_KEY, Address.ZERO
         });
+
+        private final String name;
+        private final Object[] functionParameters;
+        private final Object[] expectedResultFields;
+    }
+
+    @RequiredArgsConstructor
+    enum SupportedContractReadFunctions {
+        IS_TOKEN_PRECOMPILE("isTokenAddress", new Address[] {FUNGIBLE_TOKEN_ADDRESS}, new Boolean[] {true}),
+        IS_TOKEN_PRECOMPILE_NFT("isTokenAddress", new Address[] {NFT_ADDRESS}, new Boolean[] {true});
 
         private final String name;
         private final Object[] functionParameters;

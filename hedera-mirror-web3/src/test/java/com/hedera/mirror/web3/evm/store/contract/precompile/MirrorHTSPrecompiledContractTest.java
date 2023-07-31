@@ -18,34 +18,48 @@ package com.hedera.mirror.web3.evm.store.contract.precompile;
 
 import static com.hedera.node.app.service.evm.store.contracts.precompile.AbiConstants.ABI_ID_ERC_NAME;
 import static com.hedera.services.store.contracts.precompile.AbiConstants.ABI_ID_REDIRECT_FOR_TOKEN;
+import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.fungible;
+import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.fungibleTokenAddr;
+import static com.hedera.services.store.contracts.precompile.HTSTestsUtil.successResult;
 import static com.hedera.services.store.contracts.precompile.codec.EncodingFacade.SUCCESS_RESULT;
+import static com.hedera.services.store.contracts.precompile.impl.IsTokenPrecompile.decodeIsToken;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
 import com.esaulpaugh.headlong.util.Integers;
-import com.hedera.mirror.web3.evm.account.MirrorEvmContractAliases;
 import com.hedera.mirror.web3.evm.properties.MirrorNodeEvmProperties;
 import com.hedera.mirror.web3.evm.store.Store;
-import com.hedera.mirror.web3.evm.store.StoreImpl;
+import com.hedera.mirror.web3.evm.store.Store.OnMissing;
 import com.hedera.mirror.web3.evm.store.accessor.DatabaseAccessor;
-import com.hedera.mirror.web3.evm.store.contract.EntityAddressSequencer;
 import com.hedera.mirror.web3.evm.store.contract.HederaEvmStackedWorldStateUpdater;
 import com.hedera.node.app.service.evm.store.contracts.HederaEvmWorldStateTokenAccount;
 import com.hedera.node.app.service.evm.store.contracts.precompile.EvmHTSPrecompiledContract;
 import com.hedera.node.app.service.evm.store.contracts.precompile.EvmInfrastructureFactory;
+import com.hedera.node.app.service.evm.store.contracts.precompile.codec.EvmEncodingFacade;
+import com.hedera.node.app.service.evm.store.contracts.precompile.codec.TokenInfoWrapper;
 import com.hedera.node.app.service.evm.store.contracts.precompile.proxy.RedirectViewExecutor;
 import com.hedera.node.app.service.evm.store.contracts.precompile.proxy.ViewExecutor;
 import com.hedera.node.app.service.evm.store.contracts.precompile.proxy.ViewGasCalculator;
 import com.hedera.node.app.service.evm.store.tokens.TokenAccessor;
 import com.hedera.services.store.contracts.precompile.HTSPrecompiledContract;
 import com.hedera.services.store.contracts.precompile.PrecompileMapper;
+import com.hedera.services.store.contracts.precompile.SyntheticTxnFactory;
 import com.hedera.services.store.contracts.precompile.codec.EncodingFacade;
+import com.hedera.services.store.contracts.precompile.impl.IsTokenPrecompile;
+import com.hedera.services.store.contracts.precompile.utils.PrecompilePricingUtils;
+import com.hedera.services.store.models.Token;
+import com.hederahashgraph.api.proto.java.ContractCallTransactionBody;
 import com.hederahashgraph.api.proto.java.ResponseCodeEnum;
+import com.hederahashgraph.api.proto.java.TransactionBody;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Optional;
+import java.util.Set;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -57,6 +71,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -99,13 +115,26 @@ class MirrorHTSPrecompiledContractTest {
     private HederaEvmWorldStateTokenAccount account;
 
     @Mock
-    private MirrorEvmContractAliases mirrorEvmContractAliases;
+    private SyntheticTxnFactory syntheticTxnFactory;
 
     @Mock
-    private EntityAddressSequencer entityAddressSequencer;
+    private EncodingFacade encoder;
 
+    @Mock
+    private EvmEncodingFacade evmEncodingFacade;
+
+    @Mock
+    private PrecompilePricingUtils pricingUtils;
+
+    @Mock
+    private Token token;
+
+    private TransactionBody.Builder synthBodyBuilder =
+            TransactionBody.newBuilder().setContractCall(ContractCallTransactionBody.newBuilder());
     private MirrorHTSPrecompiledContract subject;
     private Deque<MessageFrame> messageFrameStack;
+
+    @Mock
     private Store store;
 
     @InjectMocks
@@ -118,12 +147,6 @@ class MirrorHTSPrecompiledContractTest {
 
     @BeforeEach
     void setUp() {
-        final var accessors = List.<DatabaseAccessor<Object, ?>>of(
-                new BareDatabaseAccessor<Object, Character>() {}, new BareDatabaseAccessor<Object, String>() {});
-
-        store = new StoreImpl(accessors);
-        store.wrap(); // Create top-level RWCachingStateFrame
-
         messageFrameStack = new ArrayDeque<>();
         messageFrameStack.push(messageFrame);
 
@@ -158,15 +181,38 @@ class MirrorHTSPrecompiledContractTest {
         // isTokenAddress signature
         final var functionHash = Bytes.fromHexString("0x19f37361");
 
-        given(evmInfrastructureFactory.newViewExecutor(any(), any(), any(), any()))
-                .willReturn(viewExecutor);
-        given(viewExecutor.computeCosted()).willReturn(Pair.of(0L, Bytes.EMPTY));
         given(messageFrame.isStatic()).willReturn(false);
+        given(messageFrame.getContractAddress()).willReturn(ALTBN128_ADD);
+        given(messageFrame.getRecipientAddress()).willReturn(ALTBN128_ADD);
+        given(messageFrame.getSenderAddress()).willReturn(Address.ALTBN128_MUL);
+        given(messageFrame.getWorldUpdater()).willReturn(worldUpdater);
+        given(worldUpdater.permissivelyUnaliased(any()))
+                .willAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+        given(worldUpdater.getStore()).willReturn(store);
+        given(messageFrame.getBlockValues()).willReturn(blockValues);
+        given(syntheticTxnFactory.createTransactionCall(anyLong(), any())).willReturn(synthBodyBuilder);
+        given(messageFrame.getValue()).willReturn(Wei.ZERO);
+
+        IsTokenPrecompile isTokenPrecompile =
+                new IsTokenPrecompile(syntheticTxnFactory, encoder, evmEncodingFacade, pricingUtils);
+        precompileMapper = new PrecompileMapper(Set.of(isTokenPrecompile));
+        subject = new MirrorHTSPrecompiledContract(
+                evmInfrastructureFactory,
+                new HTSPrecompiledContract(
+                        evmInfrastructureFactory,
+                        mirrorNodeEvmProperties,
+                        precompileMapper,
+                        new EvmHTSPrecompiledContract(evmInfrastructureFactory)));
+        MockedStatic<IsTokenPrecompile> staticIsTokenPrecompile = Mockito.mockStatic(IsTokenPrecompile.class);
+        staticIsTokenPrecompile.when(() -> decodeIsToken(any())).thenReturn(TokenInfoWrapper.forToken(fungible));
+        given(store.getToken(fungibleTokenAddr, OnMissing.DONT_THROW)).willReturn(token);
+        given(evmEncodingFacade.encodeIsToken(true)).willReturn(successResult);
 
         final var precompileResult = subject.computeCosted(functionHash, messageFrame, gasCalculator, tokenAccessor);
 
-        final var expectedResult = Pair.of(0L, Bytes.EMPTY);
+        final var expectedResult = Pair.of(0L, SUCCESS_RESULT);
         assertThat(expectedResult).isEqualTo(precompileResult);
+        staticIsTokenPrecompile.close();
     }
 
     @Test
@@ -215,7 +261,6 @@ class MirrorHTSPrecompiledContractTest {
         given(worldUpdater.getStore()).willReturn(store);
         given(messageFrame.getBlockValues()).willReturn(blockValues);
         given(blockValues.getTimestamp()).willReturn(10L);
-        given(worldUpdater.getStore()).willReturn(store);
         given(worldUpdater.permissivelyUnaliased(any()))
                 .willAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
@@ -341,7 +386,6 @@ class MirrorHTSPrecompiledContractTest {
         given(blockValues.getTimestamp()).willReturn(10L);
         given(worldUpdater.permissivelyUnaliased(any()))
                 .willAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
-        given(worldUpdater.getStore()).willReturn(store);
 
         final var precompileResult =
                 subject.computeCosted(MOCK_PRECOMPILE_FUNCTION_HASH, messageFrame, gasCalculator, tokenAccessor);
