@@ -289,11 +289,6 @@ public class HTSPrecompiledContract implements HTSPrecompiledContractAdapter {
                                 aliasResolver,
                                 new ERCTransferParams(nestedFunctionSelector, senderAddress, tokenAccessor, tokenId));
                     }
-                    case AbiConstants.ABI_ID_IS_TOKEN -> {
-                        precompile =
-                                precompileMapper.lookup(nestedFunctionSelector).orElseThrow();
-                        transactionBody = precompile.body(input, aliasResolver, new FunctionParam(functionId));
-                    }
                     default -> {
                         this.precompile =
                                 precompileMapper.lookup(nestedFunctionSelector).orElseThrow();

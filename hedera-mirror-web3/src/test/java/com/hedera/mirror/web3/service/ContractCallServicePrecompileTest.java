@@ -286,8 +286,8 @@ class ContractCallServicePrecompileTest extends ContractCallTestSetup {
 
     @RequiredArgsConstructor
     enum SupportedContractReadFunctions {
-        IS_TOKEN_PRECOMPILE("isTokenAddress", new Address[] {FUNGIBLE_TOKEN_ADDRESS}),
-        IS_TOKEN_PRECOMPILE_NFT("isTokenAddress", new Address[] {NFT_ADDRESS});
+        IS_TOKEN_PRECOMPILE("isTokenAddress", new Object[] {FUNGIBLE_TOKEN_ADDRESS}),
+        IS_TOKEN_PRECOMPILE_NFT("isTokenAddress", new Object[] {NFT_ADDRESS});
 
         private final String name;
         private final Object[] functionParameters;
