@@ -14,21 +14,13 @@
  * limitations under the License.
  */
 
-package com.hedera.services.store.contracts.precompile.impl;
+package com.hedera.mirror.common.domain.entity;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.hedera.mirror.common.domain.History;
 
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+public interface FungibleAllowance extends History {
 
-@ExtendWith(MockitoExtension.class)
-class ImpliedTransfersTest {
+    long getAmount();
 
-    @Test
-    void detectsMissingCustomFees() {
-        final var noCustomFees = new ImpliedTransfers(Collections.emptyList());
-        assertFalse(noCustomFees.hasAssessedCustomFees());
-    }
+    void setAmount(long amount);
 }
