@@ -158,6 +158,8 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
     protected static final TokenExpiryWrapper TOKEN_EXPIRY_WRAPPER = getTokenExpiry();
     protected static final ToLongFunction<String> longValueOf =
             value -> Bytes.fromHexString(value).toLong();
+
+    // TODO: Add correct prices for fees for ContractCall for token create
     protected static CurrentAndNextFeeSchedule feeSchedules = CurrentAndNextFeeSchedule.newBuilder()
             .setCurrentFeeSchedule(FeeSchedule.newBuilder()
                     .setExpiryTime(TimestampSeconds.newBuilder().setSeconds(expiry))
@@ -166,6 +168,10 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
                             .addFees(FeeData.newBuilder()
                                     .setServicedata(FeeComponents.newBuilder()
                                             .setGas(852000)
+                                            .setRbh(100)
+                                            .setSbh(100)
+                                            .setMin(50)
+                                            .setMax(100)
                                             .build())))
                     .addTransactionFeeSchedule(TransactionFeeSchedule.newBuilder()
                             .setHederaFunctionality(CryptoTransfer)
@@ -203,6 +209,10 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
                             .addFees(FeeData.newBuilder()
                                     .setServicedata(FeeComponents.newBuilder()
                                             .setGas(852000)
+                                            .setRbh(100)
+                                            .setSbh(100)
+                                            .setMin(50)
+                                            .setMax(100)
                                             .build())
                                     .build())))
             .setNextFeeSchedule(FeeSchedule.newBuilder()
@@ -242,12 +252,20 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
                             .addFees(FeeData.newBuilder()
                                     .setServicedata(FeeComponents.newBuilder()
                                             .setGas(852000)
+                                            .setRbh(100)
+                                            .setSbh(100)
+                                            .setMin(50)
+                                            .setMax(100)
                                             .build())))
                     .addTransactionFeeSchedule(TransactionFeeSchedule.newBuilder()
                             .setHederaFunctionality(TokenCreate)
                             .addFees(FeeData.newBuilder()
                                     .setServicedata(FeeComponents.newBuilder()
                                             .setGas(852000)
+                                            .setRbh(100)
+                                            .setSbh(100)
+                                            .setMin(50)
+                                            .setMax(100)
                                             .build())
                                     .build())))
             .build();
