@@ -60,8 +60,6 @@ import com.hedera.services.ledger.TransferLogic;
 import com.hedera.services.store.contracts.precompile.HTSPrecompiledContract;
 import com.hedera.services.store.contracts.precompile.Precompile;
 import com.hedera.services.store.contracts.precompile.PrecompileMapper;
-import com.hedera.services.store.contracts.precompile.PrecompileMapperErc;
-import com.hedera.services.store.contracts.precompile.PrecompileMapperErcHts;
 import com.hedera.services.store.contracts.precompile.PrngSystemPrecompiledContract;
 import com.hedera.services.store.contracts.precompile.SyntheticTxnFactory;
 import com.hedera.services.store.contracts.precompile.TokenUpdateLogic;
@@ -309,16 +307,6 @@ public class ServicesConfiguration {
     @Bean
     PrecompileMapper precompileMapper(final Set<Precompile> precompiles) {
         return new PrecompileMapper(precompiles);
-    }
-
-    @Bean
-    PrecompileMapperErc precompileMapperErc(final Set<Precompile> precompiles) {
-        return new PrecompileMapperErc(precompiles);
-    }
-
-    @Bean
-    PrecompileMapperErcHts precompileMapperErcHts(final Set<Precompile> precompiles) {
-        return new PrecompileMapperErcHts(precompiles);
     }
 
     @Bean
