@@ -57,8 +57,6 @@ import com.hedera.services.hapi.fees.usage.TxnUsageEstimator;
 import com.hedera.services.hapi.fees.usage.crypto.CryptoOpsUsage;
 import com.hedera.services.hapi.utils.fees.CryptoFeeBuilder;
 import com.hedera.services.ledger.TransferLogic;
-import com.hedera.services.store.contracts.precompile.ERCPrecompiledContract;
-import com.hedera.services.store.contracts.precompile.ErcHtsPrecompiledContract;
 import com.hedera.services.store.contracts.precompile.HTSPrecompiledContract;
 import com.hedera.services.store.contracts.precompile.Precompile;
 import com.hedera.services.store.contracts.precompile.PrecompileMapper;
@@ -738,40 +736,6 @@ public class ServicesConfiguration {
                 evmInfrastructureFactory,
                 mirrorNodeEvmProperties,
                 precompileMapper,
-                store,
-                tokenAccessor,
-                precompilePricingUtils);
-    }
-
-    @Bean
-    ERCPrecompiledContract ercPrecompiledContract(
-            final EvmInfrastructureFactory evmInfrastructureFactory,
-            final MirrorNodeEvmProperties mirrorNodeEvmProperties,
-            final PrecompileMapperErc precompileMapperErc,
-            final Store store,
-            final TokenAccessorImpl tokenAccessor,
-            final PrecompilePricingUtils precompilePricingUtils) {
-        return new ERCPrecompiledContract(
-                evmInfrastructureFactory,
-                mirrorNodeEvmProperties,
-                precompileMapperErc,
-                store,
-                tokenAccessor,
-                precompilePricingUtils);
-    }
-
-    @Bean
-    ErcHtsPrecompiledContract ercHtsPrecompiledContract(
-            final EvmInfrastructureFactory evmInfrastructureFactory,
-            final MirrorNodeEvmProperties mirrorNodeEvmProperties,
-            final PrecompileMapperErcHts precompileMapperErcHts,
-            final Store store,
-            final TokenAccessorImpl tokenAccessor,
-            final PrecompilePricingUtils precompilePricingUtils) {
-        return new ErcHtsPrecompiledContract(
-                evmInfrastructureFactory,
-                mirrorNodeEvmProperties,
-                precompileMapperErcHts,
                 store,
                 tokenAccessor,
                 precompilePricingUtils);

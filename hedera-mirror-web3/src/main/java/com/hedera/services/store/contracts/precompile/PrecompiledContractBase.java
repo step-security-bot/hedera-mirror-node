@@ -71,8 +71,7 @@ public abstract class PrecompiledContractBase extends EvmHTSPrecompiledContract 
     protected final TokenAccessor tokenAccessor;
     protected final PrecompilePricingUtils precompilePricingUtils;
 
-    @SuppressWarnings("java:S107")
-    public PrecompiledContractBase(
+    protected PrecompiledContractBase(
             final EvmInfrastructureFactory infrastructureFactory,
             final MirrorNodeEvmProperties evmProperties,
             final Store store,
