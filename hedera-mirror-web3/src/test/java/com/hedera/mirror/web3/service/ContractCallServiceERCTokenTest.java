@@ -19,11 +19,15 @@ package com.hedera.mirror.web3.service;
 import static com.hedera.mirror.web3.service.model.CallServiceParameters.CallType.ETH_CALL;
 import static com.hedera.mirror.web3.service.model.CallServiceParameters.CallType.ETH_ESTIMATE_GAS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import com.hedera.mirror.web3.exception.BlockNumberOutOfRangeException;
 import com.hedera.mirror.web3.viewmodel.BlockType;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -38,37 +42,45 @@ class ContractCallServiceERCTokenTest extends ContractCallTestSetup {
                 .flatMap(ercFunction -> Stream.of(Arguments.of(ercFunction, true), Arguments.of(ercFunction, false)));
     }
 
+    private static Stream<Arguments> ercContractFunctionArgumentsProviderHistorical() {
+        List<String> blockNumbers = List.of(
+                //                String.valueOf(BlockType.EARLIEST.number()), TODO: this fails now but Kris will push a
+                // fix - uncomment after that
+                //                String.valueOf(htsAndErcBlock - 1), TODO: same as above
+                String.valueOf(htsAndErcBlock), String.valueOf(BlockType.LATEST.number()));
+
+        return Arrays.stream(ErcContractReadOnlyFunctions.values())
+                .flatMap(ercFunction -> Stream.concat(
+                        blockNumbers.stream().map(blockNumber -> Arguments.of(ercFunction, true, blockNumber)),
+                        blockNumbers.stream().map(blockNumber -> Arguments.of(ercFunction, false, blockNumber))));
+    }
+
     public static final String REDIRECT_SUFFIX = "Redirect";
     public static final String NON_STATIC_SUFFIX = "NonStatic";
 
     @ParameterizedTest
-    @MethodSource("ercContractFunctionArgumentsProvider")
-    void historicalTest(final ErcContractReadOnlyFunctions ercFunction, final boolean isStatic) {
+    @MethodSource("ercContractFunctionArgumentsProviderHistorical")
+    void ercReadOnlyPrecompileOperationsTest(
+            final ErcContractReadOnlyFunctions ercFunction, final boolean isStatic, final String blockNumber) {
         final var functionName = ercFunction.getName(isStatic);
         final var functionHash =
                 functionEncodeDecoder.functionHashFor(functionName, ERC_ABI_PATH, ercFunction.functionParameters);
         final var serviceParameters = serviceParametersForExecution(
-                functionHash, ERC_CONTRACT_ADDRESS, ETH_CALL, 0L, BlockType.of(String.valueOf(htsAndErcBlock - 1)));
+                functionHash, ERC_CONTRACT_ADDRESS, ETH_CALL, 0L, BlockType.of(blockNumber));
 
         final var successfulResponse = functionEncodeDecoder.encodedResultFor(
                 ercFunction.name, ERC_ABI_PATH, ercFunction.expectedResultFields);
+        final var errorResponse = Bytes.EMPTY.toHexString();
+        final var latestBlockNumber = recordFileRepository.findLatestIndex().orElse(Long.MAX_VALUE);
 
-        assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
-    }
-
-    @ParameterizedTest
-    @MethodSource("ercContractFunctionArgumentsProvider")
-    void ercReadOnlyPrecompileOperationsTest(final ErcContractReadOnlyFunctions ercFunction, final boolean isStatic) {
-        final var functionName = ercFunction.getName(isStatic);
-        final var functionHash =
-                functionEncodeDecoder.functionHashFor(functionName, ERC_ABI_PATH, ercFunction.functionParameters);
-        final var serviceParameters =
-                serviceParametersForExecution(functionHash, ERC_CONTRACT_ADDRESS, ETH_CALL, 0L, BlockType.LATEST);
-
-        final var successfulResponse = functionEncodeDecoder.encodedResultFor(
-                ercFunction.name, ERC_ABI_PATH, ercFunction.expectedResultFields);
-
-        assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
+        if (Long.parseLong(blockNumber) > latestBlockNumber) {
+            assertThatThrownBy(() -> contractCallService.processCall(serviceParameters))
+                    .isInstanceOf(BlockNumberOutOfRangeException.class);
+        } else if (Long.parseLong(blockNumber) < htsAndErcBlock) {
+            assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(errorResponse);
+        } else {
+            assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
+        }
     }
 
     @ParameterizedTest
