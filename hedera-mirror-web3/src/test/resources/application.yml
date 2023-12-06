@@ -9,16 +9,16 @@ hedera:
         password: ${embedded.postgresql.password}
       evm:
         system_precompiles:
-          ERC: 500
-          HTS: 600
-          exchangeRate: 700
-          PRNG: 800
-          HRC: 3000
-        evm_versions:
-          v0.30: 1000
-          v0.34: 2000
-          v0.38: 3000
-          v0.45: 4000
+          HTS: 75
+          ERC: 75
+          exchangeRate: 100
+          PRNG: 125
+          HRC: 130
+          evm_versions:
+            v0.30: 80
+            v0.34: 90
+            v0.38: 100
+            v0.45: 125
 spring:
   datasource:
     name: ${hedera.mirror.web3.db.name}

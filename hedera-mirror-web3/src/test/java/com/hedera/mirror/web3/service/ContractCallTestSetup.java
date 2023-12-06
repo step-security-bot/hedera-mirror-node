@@ -93,6 +93,10 @@ import org.springframework.beans.factory.annotation.Value;
 public class ContractCallTestSetup extends Web3IntegrationTest {
 
     protected static final long expiry = 1_234_567_890L;
+    protected static final long htsAndErcBlock = 75L;
+    protected static final long exchangeRateBlock = 100L;
+    protected static final long prngBlock = 125L;
+    protected static final long hrcBlock = 130L;
     protected static final BigInteger SUCCESS_RESULT = BigInteger.valueOf(ResponseCodeEnum.SUCCESS_VALUE);
 
     // Exchange rates from local node.
@@ -810,6 +814,7 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
 
     protected void persistEntities() {
         genesisBlockPersist();
+        historicalBlocksPersist();
         evmCodesContractPersist();
         ethCallContractPersist();
         reverterContractPersist();
@@ -1060,6 +1065,20 @@ public class ContractCallTestSetup extends Web3IntegrationTest {
     private void genesisBlockPersist() {
         genesisRecordFileForBlockHash =
                 domainBuilder.recordFile().customize(f -> f.index(0L)).persist();
+    }
+
+    private void historicalBlocksPersist() {
+        domainBuilder.recordFile().customize(f -> f.index(htsAndErcBlock - 1)).persist();
+        domainBuilder
+                .recordFile()
+                .customize(f -> f.index(exchangeRateBlock - 1))
+                .persist();
+        domainBuilder.recordFile().customize(f -> f.index(hrcBlock - 1)).persist();
+        domainBuilder.recordFile().customize(f -> f.index(prngBlock - 1)).persist();
+        domainBuilder.recordFile().customize(f -> f.index(htsAndErcBlock)).persist();
+        domainBuilder.recordFile().customize(f -> f.index(exchangeRateBlock)).persist();
+        domainBuilder.recordFile().customize(f -> f.index(hrcBlock)).persist();
+        domainBuilder.recordFile().customize(f -> f.index(prngBlock)).persist();
     }
 
     // Custom fees and rates persist

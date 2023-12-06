@@ -43,6 +43,21 @@ class ContractCallServiceERCTokenTest extends ContractCallTestSetup {
 
     @ParameterizedTest
     @MethodSource("ercContractFunctionArgumentsProvider")
+    void historicalTest(final ErcContractReadOnlyFunctions ercFunction, final boolean isStatic) {
+        final var functionName = ercFunction.getName(isStatic);
+        final var functionHash =
+                functionEncodeDecoder.functionHashFor(functionName, ERC_ABI_PATH, ercFunction.functionParameters);
+        final var serviceParameters = serviceParametersForExecution(
+                functionHash, ERC_CONTRACT_ADDRESS, ETH_CALL, 0L, BlockType.of(String.valueOf(htsAndErcBlock - 1)));
+
+        final var successfulResponse = functionEncodeDecoder.encodedResultFor(
+                ercFunction.name, ERC_ABI_PATH, ercFunction.expectedResultFields);
+
+        assertThat(contractCallService.processCall(serviceParameters)).isEqualTo(successfulResponse);
+    }
+
+    @ParameterizedTest
+    @MethodSource("ercContractFunctionArgumentsProvider")
     void ercReadOnlyPrecompileOperationsTest(final ErcContractReadOnlyFunctions ercFunction, final boolean isStatic) {
         final var functionName = ercFunction.getName(isStatic);
         final var functionHash =
