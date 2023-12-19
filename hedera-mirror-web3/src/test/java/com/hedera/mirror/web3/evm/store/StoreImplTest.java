@@ -154,11 +154,12 @@ class StoreImplTest {
                 nftRepository,
                 tokenAllowanceRepository,
                 cryptoAllowanceRepository,
-                tokenAccountRepository);
+                tokenAccountRepository,
+                null);
         final var tokenDatabaseAccessor = new TokenDatabaseAccessor(
                 tokenRepository, entityDatabaseAccessor, entityRepository, customFeeDatabaseAccessor);
         final var tokenRelationshipDatabaseAccessor = new TokenRelationshipDatabaseAccessor(
-                tokenDatabaseAccessor, accountDatabaseAccessor, tokenAccountRepository);
+                tokenDatabaseAccessor, accountDatabaseAccessor, tokenAccountRepository, null);
         final var uniqueTokenDatabaseAccessor = new UniqueTokenDatabaseAccessor(nftRepository);
         final var entityDatabaseAccessor = new EntityDatabaseAccessor(entityRepository);
         final List<DatabaseAccessor<Object, ?>> accessors = List.of(

@@ -65,29 +65,103 @@ public interface TokenBalanceRepository extends CrudRepository<TokenBalance, Tok
             value =
                     """
                     with balance_snapshot as (
-                      select consensus_timestamp
-                      from account_balance
-                      where account_id = 2 and consensus_timestamp <= ?3
-                      order by consensus_timestamp desc
-                      limit 1
-                    ), base as (
-                        select balance
-                        from token_balance as tb, balance_snapshot as s
-                        where
-                          tb.consensus_timestamp = s.consensus_timestamp and
-                          token_id = ?1 and
-                          account_id = ?2
-                    ), change as (
-                        select sum(amount) as amount
-                        from token_transfer as tt, balance_snapshot as s
-                        where
-                          token_id = ?1 and
-                          account_id = ?2 and
-                          tt.consensus_timestamp > s.consensus_timestamp and
-                          tt.consensus_timestamp <= ?3
+                    select consensus_timestamp
+                    from account_balance
+                    where account_id = 2 and consensus_timestamp <= ?3
+                    order by consensus_timestamp desc
+                    limit 1
+                    ),
+                    base as (
+                    select balance
+                    from token_balance as tb, balance_snapshot as s
+                    where
+                    tb.consensus_timestamp = s.consensus_timestamp and
+                    token_id = ?1 and
+                    account_id = ?2
+                    ),
+                    account_snapshot as (
+                    (
+                    select created_timestamp
+                    from entity
+                    where id = ?2
+                    and deleted is not true
+                    order by created_timestamp
+                    )
+                    union all
+                    (
+                    select created_timestamp
+                    from entity_history
+                    where id = ?2
+                    and deleted is not true
+                    order by created_timestamp
+                    limit 1
+                    )
+                    order by created_timestamp
+                    limit 1
+                    ),
+                    change as (
+                    select sum(amount) as amount
+                    from token_transfer as tt
+                    where
+                    token_id = ?1 and
+                    account_id = ?2 and
+                    tt.consensus_timestamp >= COALESCE((SELECT consensus_timestamp FROM balance_snapshot), (SELECT created_timestamp FROM account_snapshot)) and
+                    tt.consensus_timestamp <= ?3
                     )
                     select coalesce((select balance from base), 0) + coalesce((select amount from change), 0)
                     """,
             nativeQuery = true)
     Optional<Long> findHistoricalTokenBalanceUpToTimestamp(long tokenId, long accountId, long blockTimestamp);
+
+    @Query(
+            value =
+                    """
+                    with balance_snapshot as (
+                    select consensus_timestamp
+                    from account_balance
+                    where account_id = 2 and consensus_timestamp <= ?3
+                    order by consensus_timestamp desc
+                    limit 1
+                    ),
+                    base as (
+                    select balance
+                    from token_balance as tb, balance_snapshot as s
+                    where
+                    tb.consensus_timestamp = s.consensus_timestamp and
+                    token_id = ?1 and
+                    account_id = ?2
+                    ),
+                    account_snapshot as (
+                    (
+                    select created_timestamp
+                    from entity
+                    where id = ?2
+                    and deleted is not true
+                    order by created_timestamp
+                    )
+                    union all
+                    (
+                    select created_timestamp
+                    from entity_history
+                    where id = ?2
+                    and deleted is not true
+                    order by created_timestamp
+                    limit 1
+                    )
+                    order by created_timestamp
+                    limit 1
+                    ),
+                    change as (
+                    select sum(amount) as amount
+                    from nft_transfer as tt
+                    where
+                    token_id = ?1 and
+                    account_id = ?2 and
+                    tt.consensus_timestamp >= COALESCE((SELECT consensus_timestamp FROM balance_snapshot), (SELECT created_timestamp FROM account_snapshot)) and
+                    tt.consensus_timestamp <= ?3
+                    )
+                    select coalesce((select balance from base), 0) + coalesce((select amount from change), 0)
+                    """,
+            nativeQuery = true)
+    Optional<Long> findHistoricalTokenBalanceNftUpToTimestamp(long tokenId, long accountId, long blockTimestamp);
 }

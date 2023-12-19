@@ -62,21 +62,42 @@ public interface AccountBalanceRepository extends CrudRepository<AccountBalance,
             value =
                     """
                     with balance_snapshot as (
-                        select balance, consensus_timestamp
-                        from account_balance
-                        where
-                            account_id = ?1 and
-                            consensus_timestamp <= ?2
-                        order by consensus_timestamp desc
-                        limit 1
-                    ), change as (
-                        select sum(amount) as amount
-                        from crypto_transfer as ct, balance_snapshot as s
-                        where
-                            ct.entity_id = ?1 and
-                            ct.consensus_timestamp > s.consensus_timestamp and
-                            ct.consensus_timestamp <= ?2 and
-                            (ct.errata is null or ct.errata <> 'DELETE')
+                    select balance, consensus_timestamp
+                    from account_balance
+                    where
+                    account_id = ?1 and
+                    consensus_timestamp <= ?2
+                    order by consensus_timestamp desc
+                    limit 1
+                    ),
+                    account_snapshot as (
+                    (
+                    select created_timestamp
+                    from entity
+                    where id = ?1
+                    and deleted is not true
+                    order by created_timestamp
+                    )
+                    union all
+                    (
+                    select created_timestamp
+                    from entity_history
+                    where id = ?1
+                    and deleted is not true
+                    order by created_timestamp
+                    limit 1
+                    )
+                    order by created_timestamp
+                    limit 1
+                    ),
+                    change as (
+                    select sum(amount) as amount
+                    from crypto_transfer as ct
+                    where
+                    ct.entity_id = ?1 and
+                    ct.consensus_timestamp >= COALESCE((SELECT consensus_timestamp FROM balance_snapshot), (SELECT created_timestamp FROM account_snapshot)) and
+                    ct.consensus_timestamp <= ?2 and
+                    (ct.errata is null or ct.errata <> 'DELETE')
                     )
                     select coalesce((select balance from balance_snapshot), 0) + coalesce((select amount from change), 0)
                     """,

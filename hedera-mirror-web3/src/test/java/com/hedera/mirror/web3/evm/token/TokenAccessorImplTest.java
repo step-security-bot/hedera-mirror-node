@@ -139,14 +139,15 @@ class TokenAccessorImplTest {
                 nftRepository,
                 tokenAllowanceRepository,
                 cryptoAllowanceRepository,
-                tokenAccountRepository);
+                tokenAccountRepository,
+                null);
         accessors = List.of(
                 entityAccessor,
                 customFeeAccessor,
                 accountDatabaseAccessor,
                 tokenDatabaseAccessor,
                 new TokenRelationshipDatabaseAccessor(
-                        tokenDatabaseAccessor, accountDatabaseAccessor, tokenAccountRepository),
+                        tokenDatabaseAccessor, accountDatabaseAccessor, tokenAccountRepository, null),
                 new UniqueTokenDatabaseAccessor(nftRepository));
         final var stackedStateFrames = new StackedStateFrames(accessors);
         store = new StoreImpl(stackedStateFrames);
