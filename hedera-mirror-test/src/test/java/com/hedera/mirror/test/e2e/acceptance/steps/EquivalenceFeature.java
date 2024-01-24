@@ -43,15 +43,18 @@ import com.hedera.hashgraph.sdk.Hbar;
 import com.hedera.hashgraph.sdk.KeyList;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
 import com.hedera.hashgraph.sdk.ReceiptStatusException;
+import com.hedera.hashgraph.sdk.Status;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TokenUpdateTransaction;
 import com.hedera.mirror.test.e2e.acceptance.client.AccountClient;
 import com.hedera.mirror.test.e2e.acceptance.client.AccountClient.AccountNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.ExecuteContractResult;
+import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.NodeNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.client.TokenClient;
 import com.hedera.mirror.test.e2e.acceptance.client.TokenClient.TokenNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.props.ExpandedAccountId;
 import com.hedera.mirror.test.e2e.acceptance.response.NetworkTransactionResponse;
+import com.hedera.mirror.test.e2e.acceptance.util.TestUtil;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -66,6 +69,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -78,6 +82,7 @@ public class EquivalenceFeature extends AbstractFeature {
     private static final String INVALID_SIGNATURE = "INVALID_SIGNATURE";
     private static final String INVALID_FEE_SUBMITTED = "INVALID_FEE_SUBMITTED";
     private static final String TRANSACTION_SUCCESSFUL_MESSAGE = "Transaction successful";
+    private static final String TRANSACTION_FAILED_MESSAGE = "Transaction failed";
     private static final String CONTRACT_REVERTED = "CONTRACT_REVERT_EXECUTED";
     private static final String INVALID_RECEIVING_NODE_ACCOUNT = "INVALID_RECEIVING_NODE_ACCOUNT";
     private static final String INVALID_ALIAS_KEY = "INVALID_ALIAS_KEY";
@@ -280,7 +285,7 @@ public class EquivalenceFeature extends AbstractFeature {
         ContractFunctionParameters parameters = new ContractFunctionParameters().addAddress(accountId);
         var message = executeContractCallTransaction(deployedEquivalenceCall, "destroyContract", parameters, null);
         removeFromContractIdMap(EQUIVALENCE_DESTRUCT);
-        assertEquals("Transaction successful", message);
+        assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, message);
     }
 
     @Then("I execute directCall to range {string} addresses via HTS Precompile with amount")
@@ -289,7 +294,7 @@ public class EquivalenceFeature extends AbstractFeature {
         ContractFunctionParameters parameters = new ContractFunctionParameters().addAddress(accountId);
         var message = executeContractCallTransaction(deployedEquivalenceCall, "destroyContract", parameters, null);
         removeFromContractIdMap(EQUIVALENCE_DESTRUCT);
-        assertEquals("Transaction successful", message);
+        assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, message);
     }
 
     @Then("I execute directCall to range {string} addresses without amount")
@@ -560,30 +565,28 @@ public class EquivalenceFeature extends AbstractFeature {
         }
     }
 
-    @Then("I make internal {string} to system account {string} {string} amount")
-    public void callToSystemAddress(String call, String address, String amountType) {
-        String functionResult;
-        ContractFunctionParameters parameters;
+    @Then("I make internal {string} to system account {string} {string} amount to {node} node")
+    public void callToSystemAddress(String call, String address, String amountType, NodeNameEnum node) {
         var accountId = new AccountId(extractAccountNumber(address)).toSolidityAddress();
         var callType = getMethodName(call, amountType);
 
+        byte[] functionParameterData;
         if (call.equals("callcode")) {
-            parameters = new ContractFunctionParameters()
-                    .addAddress(accountId)
-                    .addBytes(new byte[]{0x21, 0x21, 0x12, 0x12});
+            functionParameterData = new byte[]{0x21, 0x21, 0x12, 0x12};
         } else {
-            parameters = new ContractFunctionParameters().addAddress(accountId).addBytes(new byte[0]);
+            functionParameterData = new byte[0];
+        }
+        byte[] data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress(accountId), functionParameterData);
+
+        Hbar amount = null;
+        if (amountType.equals("with")) {
+            amount = Hbar.fromTinybars(10);
         }
 
-        if (amountType.equals("with")) {
-            functionResult = executeContractCallTransaction(
-                    deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(10));
-        } else {
-            functionResult = executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
-        }
+        var isSuccess = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, amount);
 
         if (extractAccountNumber(address) > 751) {
-            assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, functionResult);
+            assertTrue(isSuccess);
         }
         // POTENTIAL BUG
         // CALL WITH AMOUNT RETURNS FAILURE FOR THE 2ND CALL WITH PRECOMPILE_ERROR - > WE EXPECT INVALID_FEE_SUBMITTED
@@ -908,8 +911,7 @@ public class EquivalenceFeature extends AbstractFeature {
                     payableAmount);
 
             networkTransactionResponse = executeContractResult.networkTransactionResponse();
-            verifyMirrorTransactionsResponse(mirrorClient, 200);
-            return "Transaction successful";
+            return networkTransactionResponse.getReceipt().status == Status.SUCCESS ? TRANSACTION_SUCCESSFUL_MESSAGE : TRANSACTION_FAILED_MESSAGE;
         } catch (Exception e) {
             // Return the exception message
             return e.getMessage();
@@ -931,8 +933,7 @@ public class EquivalenceFeature extends AbstractFeature {
                     null);
 
             networkTransactionResponse = executeContractResult.networkTransactionResponse();
-            verifyMirrorTransactionsResponse(mirrorClient, 200);
-            return "Transaction successful";
+            return networkTransactionResponse.getReceipt().status == Status.SUCCESS ? TRANSACTION_SUCCESSFUL_MESSAGE : TRANSACTION_FAILED_MESSAGE;
         } catch (Exception e) {
             // Return the exception message
             return e.getMessage();
@@ -955,7 +956,7 @@ public class EquivalenceFeature extends AbstractFeature {
 
             networkTransactionResponse = executeContractResult.networkTransactionResponse();
             verifyMirrorTransactionsResponse(mirrorClient, 200);
-            return "Transaction successful";
+            return TRANSACTION_SUCCESSFUL_MESSAGE;
         } catch (Exception e) {
             // Return the exception message
             return e.getMessage();

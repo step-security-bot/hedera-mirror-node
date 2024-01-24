@@ -86,34 +86,34 @@ Feature: in-equivalence tests
   and callcode
     Given I successfully create equivalence call contract
     Then the mirror node REST API should return status 200 for the contracts creation
-    Then I make internal <callType> to system account <account> <amountType> amount
+    Then I make internal <callType> to system account <account> <amountType> amount to <node> node
 
     Examples:
-      | callType       | account   | amountType |
-      | "call"         | "0.0.0"   | "without"  |
-      | "call"         | "0.0.0"   | "with"     |
-      | "call"         | "0.0.357" | "without"  |
-      | "call"         | "0.0.357" | "with"     |
-      | "call"         | "0.0.741" | "without"  |
-      | "call"         | "0.0.741" | "with"     |
-      | "call"         | "0.0.800" | "without"  |
-      | "call"         | "0.0.800" | "with"     |
-      | "staticcall"   | "0.0.0"   | "without"  |
-      | "staticcall"   | "0.0.357" | "without"  |
-      | "staticcall"   | "0.0.741" | "without"  |
-      | "staticcall"   | "0.0.800" | "without"  |
-      | "delegatecall" | "0.0.0"   | "without"  |
-      | "delegatecall" | "0.0.357" | "without"  |
-      | "delegatecall" | "0.0.741" | "without"  |
-      | "delegatecall" | "0.0.800" | "without"  |
-      | "callcode"     | "0.0.0"   | "without"  |
-      | "callcode"     | "0.0.0"   | "with"     |
-      | "callcode"     | "0.0.357" | "without"  |
-      | "callcode"     | "0.0.357" | "with"     |
-      | "callcode"     | "0.0.741" | "without"  |
-      | "callcode"     | "0.0.741" | "with"     |
-      | "callcode"     | "0.0.800" | "without"  |
-      | "callcode"     | "0.0.800" | "with"     |
+      | callType       | account   | amountType | node        |
+      | "call"         | "0.0.0"   | "without"  | "CONSENSUS" |
+      | "call"         | "0.0.0"   | "with"     | "CONSENSUS" |
+      | "call"         | "0.0.357" | "without"  | "CONSENSUS" |
+      | "call"         | "0.0.357" | "with"     | "CONSENSUS" |
+      | "call"         | "0.0.741" | "without"  | "CONSENSUS" |
+      | "call"         | "0.0.741" | "with"     | "CONSENSUS" |
+      | "call"         | "0.0.800" | "without"  | "CONSENSUS" |
+      | "call"         | "0.0.800" | "with"     | "CONSENSUS" |
+      | "staticcall"   | "0.0.0"   | "without"  | "CONSENSUS" |
+      | "staticcall"   | "0.0.357" | "without"  | "CONSENSUS" |
+      | "staticcall"   | "0.0.741" | "without"  | "CONSENSUS" |
+      | "staticcall"   | "0.0.800" | "without"  | "CONSENSUS" |
+      | "delegatecall" | "0.0.0"   | "without"  | "CONSENSUS" |
+      | "delegatecall" | "0.0.357" | "without"  | "CONSENSUS" |
+      | "delegatecall" | "0.0.741" | "without"  | "CONSENSUS" |
+      | "delegatecall" | "0.0.800" | "without"  | "CONSENSUS" |
+      | "callcode"     | "0.0.0"   | "without"  | "CONSENSUS" |
+      | "callcode"     | "0.0.0"   | "with"     | "CONSENSUS" |
+      | "callcode"     | "0.0.357" | "without"  | "CONSENSUS" |
+      | "callcode"     | "0.0.357" | "with"     | "CONSENSUS" |
+      | "callcode"     | "0.0.741" | "without"  | "CONSENSUS" |
+      | "callcode"     | "0.0.741" | "with"     | "CONSENSUS" |
+      | "callcode"     | "0.0.800" | "without"  | "CONSENSUS" |
+      | "callcode"     | "0.0.800" | "with"     | "CONSENSUS" |
 
 
   Scenario Outline: Validate in-equivalence tests for internal calls

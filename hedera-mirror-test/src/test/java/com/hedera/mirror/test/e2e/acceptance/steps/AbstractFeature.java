@@ -21,14 +21,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.esaulpaugh.headlong.abi.Function;
+import com.esaulpaugh.headlong.abi.TupleType;
 import com.esaulpaugh.headlong.util.Strings;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hedera.hashgraph.sdk.ContractId;
 import com.hedera.hashgraph.sdk.FileId;
 import com.hedera.hashgraph.sdk.Hbar;
 import com.hedera.mirror.test.e2e.acceptance.client.ContractClient;
+import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.NodeNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.client.FileClient;
 import com.hedera.mirror.test.e2e.acceptance.client.MirrorNodeClient;
+import com.hedera.mirror.test.e2e.acceptance.client.NetworkAdapter;
 import com.hedera.mirror.test.e2e.acceptance.props.CompiledSolidityArtifact;
 import com.hedera.mirror.test.e2e.acceptance.props.ContractCallRequest;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorTransaction;
@@ -51,7 +54,7 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpStatus;
 
 @CustomLog
-abstract class AbstractFeature {
+public abstract class AbstractFeature {
     protected NetworkTransactionResponse networkTransactionResponse;
     protected ContractId contractId;
     private static final Map<ContractResource, DeployedContract> contractIdMap = new ConcurrentHashMap<>();
@@ -72,6 +75,9 @@ abstract class AbstractFeature {
 
     @Autowired
     private ResourceLoader resourceLoader;
+
+    @Autowired
+    protected NetworkAdapter networkAdapter;
 
     protected long calculateCreateTokenFee(double usdFee, boolean useCurrentFee) {
         if (exchangeRates == null) {
@@ -112,7 +118,7 @@ abstract class AbstractFeature {
         return mirrorTransaction;
     }
 
-    protected DeployedContract getContract(ContractResource contractResource) throws IOException {
+    public DeployedContract getContract(ContractResource contractResource) {
         synchronized (contractIdMap) {
             return contractIdMap.computeIfAbsent(contractResource, x -> {
                 var resource = resourceLoader.getResource(contractResource.path);
@@ -161,7 +167,7 @@ abstract class AbstractFeature {
         return contractId;
     }
 
-    protected record DeployedContract(
+    public record DeployedContract(
             FileId fileId, ContractId contractId, CompiledSolidityArtifact compiledSolidityArtifact) {
     }
 
@@ -178,6 +184,17 @@ abstract class AbstractFeature {
                 .build();
 
         return mirrorClient.contractsCall(contractCallRequestBody);
+    }
+
+    protected boolean callContract(
+            final NodeNameEnum node,
+            final String from,
+            final ContractResource contractResource,
+            final String method,
+            final byte[] data,
+            final Hbar amount) {
+        return networkAdapter.contractsCall(
+                node, false, from, getContract(contractResource), method, data, amount);
     }
 
     protected ContractCallResponse estimateContract(String data, String contractAddress) {
@@ -204,9 +221,13 @@ abstract class AbstractFeature {
     }
 
     protected byte[] encodeDataToByteArray(ContractResource resource, SelectorInterface method, Object... args) {
+        return encodeDataToByteArray(resource, method.getSelector(), args);
+    }
+
+    protected byte[] encodeDataToByteArray(ContractResource resource, String method, Object... args) {
         String json;
         try (var in = getResourceAsStream(resource.getPath())) {
-            json = getAbiFunctionAsJsonString(readCompiledArtifact(in), method.getSelector());
+            json = getAbiFunctionAsJsonString(readCompiledArtifact(in), method);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -228,7 +249,7 @@ abstract class AbstractFeature {
         return resourceLoader.getResource(resourcePath).getInputStream();
     }
 
-    protected interface SelectorInterface {
+    public interface SelectorInterface {
         String getSelector();
     }
 
