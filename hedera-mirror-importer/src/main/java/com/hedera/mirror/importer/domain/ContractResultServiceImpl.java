@@ -56,6 +56,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ContractResultServiceImpl implements ContractResultService {
 
+    private static final long TX_DATA_ZERO_COST = 4L;
+    private static final long ISTANBUL_TX_DATA_NON_ZERO_COST = 16L;
+    private static final long TX_BASE_COST = 21_000L;
+    private static final long TX_CREATE_EXTRA = 32_000L;
+
     private final EntityProperties entityProperties;
     private final EntityIdService entityIdService;
     private final EntityListener entityListener;
@@ -75,7 +80,7 @@ public class ContractResultServiceImpl implements ContractResultService {
                 ? transactionRecord.getContractCreateResult()
                 : transactionRecord.getContractCallResult();
 
-        var sidecarFailedInitcode = processSidecarRecords(recordItem);
+        var sidecarProcessingResult = processSidecarRecords(recordItem);
 
         // handle non create/call transactions
         var contractCallOrCreate = isContractCreateOrCall(transactionBody);
@@ -102,9 +107,8 @@ public class ContractResultServiceImpl implements ContractResultService {
         }
 
         recordItem.addEntityId(contractId);
-
         processContractResult(
-                recordItem, contractId, functionResult, transaction, transactionHandler, sidecarFailedInitcode);
+                recordItem, contractId, functionResult, transaction, transactionHandler, sidecarProcessingResult);
     }
 
     private void addDefaultEthereumTransactionContractResult(RecordItem recordItem, Transaction transaction) {
@@ -221,7 +225,7 @@ public class ContractResultServiceImpl implements ContractResultService {
             ContractFunctionResult functionResult,
             Transaction transaction,
             TransactionHandler transactionHandler,
-            ByteString sidecarFailedInitcode) {
+            SidecarProcessingResult sidecarProcessingResult) {
         // create child contracts regardless of contractResults support
         List<Long> contractIds = getCreatedContractIds(functionResult, recordItem, contractEntityId);
         processContractNonce(functionResult);
@@ -246,8 +250,8 @@ public class ContractResultServiceImpl implements ContractResultService {
         contractResult.setTransactionResult(transaction.getResult());
         transactionHandler.updateContractResult(contractResult, recordItem);
 
-        if (sidecarFailedInitcode != null && contractResult.getFailedInitcode() == null) {
-            contractResult.setFailedInitcode(DomainUtils.toBytes(sidecarFailedInitcode));
+        if (sidecarProcessingResult.failedInitByteCode() != null && contractResult.getFailedInitcode() == null) {
+            contractResult.setFailedInitcode(DomainUtils.toBytes(sidecarProcessingResult.failedInitByteCode()));
         }
 
         if (isValidContractFunctionResult(functionResult)) {
@@ -264,6 +268,7 @@ public class ContractResultServiceImpl implements ContractResultService {
             contractResult.setErrorMessage(functionResult.getErrorMessage());
             contractResult.setFunctionResult(functionResult.toByteArray());
             contractResult.setGasUsed(functionResult.getGasUsed());
+            contractResult.setGasConsumed(sidecarProcessingResult.gasConsumed());
 
             if (functionResult.hasSenderId()) {
                 var senderId = EntityId.of(functionResult.getSenderId());
@@ -384,16 +389,19 @@ public class ContractResultServiceImpl implements ContractResultService {
     }
 
     @SuppressWarnings("java:S3776")
-    private ByteString processSidecarRecords(RecordItem recordItem) {
+    private SidecarProcessingResult processSidecarRecords(RecordItem recordItem) {
         ByteString failedInitcode = null;
         var sidecarRecords = recordItem.getSidecarRecords();
         if (sidecarRecords.isEmpty()) {
-            return failedInitcode;
+            return new SidecarProcessingResult(null, null);
         }
 
         var contractBytecodes = new ArrayList<ContractBytecode>();
         int migrationCount = 0;
         var stopwatch = Stopwatch.createStarted();
+
+        long totalGasUsed = 0;
+        ByteString contractDeployment = null;
 
         for (var sidecarRecord : sidecarRecords) {
             boolean migration = sidecarRecord.getMigration();
@@ -405,15 +413,20 @@ public class ContractResultServiceImpl implements ContractResultService {
             } else if (sidecarRecord.hasActions()) {
                 var actions = sidecarRecord.getActions();
                 for (int actionIndex = 0; actionIndex < actions.getContractActionsCount(); actionIndex++) {
-                    processContractAction(actions.getContractActions(actionIndex), actionIndex, recordItem);
+                    var action = actions.getContractActions(actionIndex);
+                    totalGasUsed = totalGasUsed + action.getGasUsed();
+                    processContractAction(action, actionIndex, recordItem);
                 }
             } else if (sidecarRecord.hasBytecode()) {
                 if (migration) {
                     contractBytecodes.add(sidecarRecord.getBytecode());
                 } else if (!recordItem.isSuccessful()) {
                     failedInitcode = sidecarRecord.getBytecode().getInitcode();
+                } else {
+                    contractDeployment = sidecarRecord.getBytecode().getInitcode();
                 }
             }
+
             if (migration) {
                 ++migrationCount;
             }
@@ -428,9 +441,10 @@ public class ContractResultServiceImpl implements ContractResultService {
                     stopwatch);
         }
 
-        return failedInitcode;
-    }
+        totalGasUsed = addIntrinsicGas(totalGasUsed, contractDeployment);
 
+        return new SidecarProcessingResult(failedInitcode, totalGasUsed);
+    }
     /**
      * Updates the contract entities in ContractCreateResult.CreatedContractIDs list. The method should only be called
      * for such contract entities in pre services 0.23 contract create transactions. Since services 0.23, the child
@@ -482,4 +496,38 @@ public class ContractResultServiceImpl implements ContractResultService {
                 && entityProperties.getPersist().isContracts()
                 && recordItem.getHapiVersion().isLessThan(RecordFile.HAPI_VERSION_0_23_0);
     }
+
+    /**
+     * Adds the intrinsic gas cost to the gas consumed by the EVM.
+     * In case of contract deployment, the init code is used to
+     * calculate the intrinsic gas cost. Otherwise, it's fixed at 21_000.
+     *
+     * @param gas The gas consumed by the EVM for the transaction
+     * @param initByteCode The init code of the contract
+     */
+    private long addIntrinsicGas(final long gas, final ByteString initByteCode) {
+        if (initByteCode == null) {
+            return gas + TX_BASE_COST;
+        }
+
+        int zeros = 0;
+        for (int i = 0; i < initByteCode.size(); i++) {
+            if (initByteCode.byteAt(i) == 0) {
+                ++zeros;
+            }
+        }
+        final int nonZeros = initByteCode.size() - zeros;
+
+        long costForByteCode = TX_BASE_COST + TX_DATA_ZERO_COST * zeros + ISTANBUL_TX_DATA_NON_ZERO_COST * nonZeros;
+
+        return costForByteCode + gas + TX_CREATE_EXTRA;
+    }
+
+    /**
+     * Record representing the result of processing sidecar records.
+     *
+     * @param failedInitByteCode The init code of the contract if the contract creation failed
+     * @param gasConsumed The gas consumed by the EVM for the transaction.
+     */
+    private record SidecarProcessingResult(ByteString failedInitByteCode, Long gasConsumed) {}
 }
