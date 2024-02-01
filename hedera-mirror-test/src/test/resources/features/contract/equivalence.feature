@@ -90,30 +90,54 @@ Feature: in-equivalence tests
 
     Examples:
       | callType       | account   | amountType | node        |
-      | "call"         | "0.0.0"   | "without"  | "CONSENSUS" |
-      | "call"         | "0.0.0"   | "with"     | "CONSENSUS" |
-      | "call"         | "0.0.357" | "without"  | "CONSENSUS" |
-      | "call"         | "0.0.357" | "with"     | "CONSENSUS" |
-      | "call"         | "0.0.741" | "without"  | "CONSENSUS" |
-      | "call"         | "0.0.741" | "with"     | "CONSENSUS" |
-      | "call"         | "0.0.800" | "without"  | "CONSENSUS" |
-      | "call"         | "0.0.800" | "with"     | "CONSENSUS" |
-      | "staticcall"   | "0.0.0"   | "without"  | "CONSENSUS" |
-      | "staticcall"   | "0.0.357" | "without"  | "CONSENSUS" |
-      | "staticcall"   | "0.0.741" | "without"  | "CONSENSUS" |
-      | "staticcall"   | "0.0.800" | "without"  | "CONSENSUS" |
-      | "delegatecall" | "0.0.0"   | "without"  | "CONSENSUS" |
-      | "delegatecall" | "0.0.357" | "without"  | "CONSENSUS" |
-      | "delegatecall" | "0.0.741" | "without"  | "CONSENSUS" |
-      | "delegatecall" | "0.0.800" | "without"  | "CONSENSUS" |
-      | "callcode"     | "0.0.0"   | "without"  | "CONSENSUS" |
-      | "callcode"     | "0.0.0"   | "with"     | "CONSENSUS" |
-      | "callcode"     | "0.0.357" | "without"  | "CONSENSUS" |
-      | "callcode"     | "0.0.357" | "with"     | "CONSENSUS" |
-      | "callcode"     | "0.0.741" | "without"  | "CONSENSUS" |
-      | "callcode"     | "0.0.741" | "with"     | "CONSENSUS" |
-      | "callcode"     | "0.0.800" | "without"  | "CONSENSUS" |
-      | "callcode"     | "0.0.800" | "with"     | "CONSENSUS" |
+      | "call"         | "0.0.0"   | "without"  | "MIRROR" |
+      | "call"         | "0.0.0"   | "with"     | "MIRROR" |
+      | "call"         | "0.0.9"   | "without"  | "MIRROR" |
+      | "call"         | "0.0.9"   | "with"     | "MIRROR" |
+      | "call"         | "0.0.357" | "without"  | "MIRROR" |
+      | "call"         | "0.0.357" | "with"     | "MIRROR" |
+      | "call"         | "0.0.358" | "without"  | "MIRROR" |
+      | "call"         | "0.0.358" | "with"     | "MIRROR" |
+      | "call"         | "0.0.741" | "without"  | "MIRROR" |
+      | "call"         | "0.0.741" | "with"     | "MIRROR" |
+      | "call"         | "0.0.800" | "without"  | "MIRROR" |
+      | "call"         | "0.0.800" | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.0"   | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.0"   | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.9"   | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.9"   | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.357" | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.357" | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.358" | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.358" | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.741" | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.741" | "with"     | "MIRROR" |
+      | "staticcall"   | "0.0.800" | "without"  | "MIRROR" |
+      | "staticcall"   | "0.0.800" | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.0"   | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.0"   | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.9"   | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.9"   | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.357" | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.357" | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.358" | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.358" | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.741" | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.741" | "with"     | "MIRROR" |
+      | "delegatecall" | "0.0.800" | "without"  | "MIRROR" |
+      | "delegatecall" | "0.0.800" | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.0"   | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.0"   | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.9"   | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.9"   | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.357" | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.357" | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.358" | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.358" | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.741" | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.741" | "with"     | "MIRROR" |
+      | "callcode"     | "0.0.800" | "without"  | "MIRROR" |
+      | "callcode"     | "0.0.800" | "with"     | "MIRROR" |
 
 
   Scenario Outline: Validate in-equivalence tests for internal calls
@@ -125,51 +149,57 @@ Feature: in-equivalence tests
     Given I successfully create tokens
     And I associate "FUNGIBLE" to contract
     Then the mirror node REST API should return status 200 for the contracts creation
-    Then I execute internal "call" against "payable" contract "with" amount
-    Then I execute internal "call" against "non-payable" contract "with" amount
-    Then I execute internal "call" against "payable" contract "without" amount
-    Then I execute internal "staticcall" against "payable" contract "without" amount
-    Then I execute internal "delegatecall" against "payable" contract "without" amount
-    Then I execute internal "callcode" against "payable" contract "with" amount
-    Then I execute internal "callcode" against "non-payable" contract "with" amount
-    Then I execute internal "callcode" against "payable" contract "without" amount
-    Then I execute internal "call" against Identity precompile
-    Then I execute internal "staticcall" against Identity precompile
-    Then I execute internal "delegatecall" against Identity precompile
-    Then I execute internal "call" against Ecrecover precompile
-    Then I execute internal "staticcall" against Ecrecover precompile
-    Then I execute internal "delegatecall" against Ecrecover precompile
-    Then I execute internal "call" against SHA-256 precompile
-    Then I execute internal "staticcall" against SHA-256 precompile
-    Then I execute internal "delegatecall" against SHA-256 precompile
-    Then I execute internal "call" against Ripemd-160 precompile
-    Then I execute internal "staticcall" against Ripemd-160 precompile
-    Then I execute internal "delegatecall" against Ripemd-160 precompile
-    Then I make internal "call" to ethereum precompile "0.0.1" address with amount
-    Then I make internal "call" to ethereum precompile "0.0.9" address with amount
-    Then I make internal "callcode" to ethereum precompile "0.0.1" address with amount
-    Then I make internal "callcode" to ethereum precompile "0.0.9" address with amount
-    Then I execute internal "call" against PRNG precompile address "without" amount
-    Then I execute internal "call" against PRNG precompile address "with" amount
-    Then I execute internal "staticcall" against PRNG precompile address "without" amount
-    Then I execute internal "delegatecall" against PRNG precompile address "without" amount
-    Then I execute internal "callcode" against PRNG precompile address "without" amount
-    Then I execute internal "callcode" against PRNG precompile address "with" amount
-    Then I execute internal "call" against exchange rate precompile address "without" amount
-    Then I execute internal "call" against exchange rate precompile address "with" amount
-    Then I execute internal "staticcall" against exchange rate precompile address "without" amount
-    Then I execute internal "delegatecall" against exchange rate precompile address "without" amount
-    Then I execute internal "call" against HTS precompile with isToken function for "FUNGIBLE" "without" amount
-    Then I execute internal "call" against HTS precompile with isToken function for "FUNGIBLE" "with" amount
-    Then I execute internal "staticcall" against HTS precompile with isToken function for "FUNGIBLE" "without" amount
-    Then I execute internal "delegatecall" against HTS precompile with isToken function for "FUNGIBLE" "without" amount
-#    Then I execute internal "callcode" against HTS precompile with isToken function for "FUNGIBLE" "without" amount -> throws precompile_error needs to be invesitgated
-#    Then I execute internal "callcode" against HTS precompile with isToken function for "FUNGIBLE" "with" amount -> throws precompile_error needs to be invesitgated
+    Then I verify the equivalence contract bytecode is deployed
+    Then I execute internal "call" against "payable" contract "with" amount to <node> node
+    Then I execute internal "call" against "non-payable" contract "with" amount to <node> node
+    Then I execute internal "call" against "payable" contract "without" amount to <node> node
+    Then I execute internal "staticcall" against "payable" contract "without" amount to <node> node
+    Then I execute internal "delegatecall" against "payable" contract "without" amount to <node> node
+    Then I execute internal "callcode" against "payable" contract "with" amount to <node> node
+    Then I execute internal "callcode" against "non-payable" contract "with" amount to <node> node
+    Then I execute internal "callcode" against "payable" contract "without" amount to <node> node
+    Then I execute internal "call" against Identity precompile to <node> node
+    Then I execute internal "staticcall" against Identity precompile to <node> node
+    Then I execute internal "delegatecall" against Identity precompile to <node> node
+    Then I execute internal "call" against Ecrecover precompile to <node> node
+    Then I execute internal "staticcall" against Ecrecover precompile to <node> node
+    Then I execute internal "delegatecall" against Ecrecover precompile to <node> node
+    Then I execute internal "call" against SHA-256 precompile to <node> node
+    Then I execute internal "staticcall" against SHA-256 precompile to <node> node
+    Then I execute internal "delegatecall" against SHA-256 precompile to <node> node
+    Then I execute internal "call" against Ripemd-160 precompile to <node> node
+    Then I execute internal "staticcall" against Ripemd-160 precompile to <node> node
+    Then I execute internal "delegatecall" against Ripemd-160 precompile to <node> node
+    Then I make internal "call" to ethereum precompile "0.0.1" address with amount to <node> node
+    Then I make internal "call" to ethereum precompile "0.0.9" address with amount to <node> node
+    Then I make internal "callcode" to ethereum precompile "0.0.1" address with amount to <node> node
+    Then I make internal "callcode" to ethereum precompile "0.0.9" address with amount to <node> node
+    Then I execute internal "call" against PRNG precompile address "without" amount to <node> node
+    Then I execute internal "call" against PRNG precompile address "with" amount to <node> node
+    Then I execute internal "staticcall" against PRNG precompile address "without" amount to <node> node
+    Then I execute internal "delegatecall" against PRNG precompile address "without" amount to <node> node
+    Then I execute internal "callcode" against PRNG precompile address "without" amount to <node> node
+    Then I execute internal "callcode" against PRNG precompile address "with" amount to <node> node
+    Then I execute internal "call" against exchange rate precompile address "without" amount to <node> node
+    Then I execute internal "call" against exchange rate precompile address "with" amount to <node> node
+    Then I execute internal "staticcall" against exchange rate precompile address "without" amount to <node> node
+    Then I execute internal "delegatecall" against exchange rate precompile address "without" amount to <node> node
+    Then I execute internal "call" against HTS precompile with isToken function for "FUNGIBLE" "without" amount to <node> node
+    Then I execute internal "call" against HTS precompile with isToken function for "FUNGIBLE" "with" amount to <node> node
+    Then I execute internal "staticcall" against HTS precompile with isToken function for "FUNGIBLE" "without" amount to <node> node
+    Then I execute internal "delegatecall" against HTS precompile with isToken function for "FUNGIBLE" "without" amount to <node> node
+#    Then I execute internal "callcode" against HTS precompile with isToken function for "FUNGIBLE" "without" amount to <node> node -> throws precompile_error
+#    Then I execute internal "callcode" against HTS precompile with isToken function for "FUNGIBLE" "with" amount to <node> node -> throws precompile_error
     Then I make internal "call" to account "BOB" "with" amount from "OPERATOR"
     Then I make internal "call" to account "ALICE" "with" amount from "OPERATOR"
     Then I make internal "call" to account "ALICE" "with" amount from "OPERATOR"
     And I update the "BOB" account and token key for contract "EQUIVALENCE_CALL"
     Then I make internal "call" to account "ALICE" "with" amount from "BOB"
+
+    Examples:
+      | node        |
+      | "CONSENSUS" |
+      | "MIRROR"    |
 
 
   Scenario Outline: Validate in-equivalence tests for HTS Transfers

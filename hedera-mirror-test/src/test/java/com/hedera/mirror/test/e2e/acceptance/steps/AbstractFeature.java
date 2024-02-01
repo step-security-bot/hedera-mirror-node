@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.esaulpaugh.headlong.abi.Function;
-import com.esaulpaugh.headlong.abi.TupleType;
 import com.esaulpaugh.headlong.util.Strings;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hedera.hashgraph.sdk.ContractId;
@@ -37,6 +36,7 @@ import com.hedera.mirror.test.e2e.acceptance.props.ContractCallRequest;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorTransaction;
 import com.hedera.mirror.test.e2e.acceptance.response.ContractCallResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.ExchangeRateResponse;
+import com.hedera.mirror.test.e2e.acceptance.response.GeneralContractExecutionResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorTransactionsResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.NetworkTransactionResponse;
 import java.io.IOException;
@@ -148,7 +148,7 @@ public abstract class AbstractFeature {
     }
 
     protected FileId persistContractBytes(String contractContents) {
-        networkTransactionResponse = fileClient.createFile(new byte[]{});
+        networkTransactionResponse = fileClient.createFile(new byte[] {});
         assertNotNull(networkTransactionResponse.getTransactionId());
         assertNotNull(networkTransactionResponse.getReceipt());
         var fileId = networkTransactionResponse.getReceipt().fileId;
@@ -168,8 +168,7 @@ public abstract class AbstractFeature {
     }
 
     public record DeployedContract(
-            FileId fileId, ContractId contractId, CompiledSolidityArtifact compiledSolidityArtifact) {
-    }
+            FileId fileId, ContractId contractId, CompiledSolidityArtifact compiledSolidityArtifact) {}
 
     protected CompiledSolidityArtifact readCompiledArtifact(InputStream in) throws IOException {
         return mapper.readValue(in, CompiledSolidityArtifact.class);
@@ -186,15 +185,14 @@ public abstract class AbstractFeature {
         return mirrorClient.contractsCall(contractCallRequestBody);
     }
 
-    protected boolean callContract(
+    protected GeneralContractExecutionResponse callContract(
             final NodeNameEnum node,
             final String from,
             final ContractResource contractResource,
             final String method,
             final byte[] data,
             final Hbar amount) {
-        return networkAdapter.contractsCall(
-                node, false, from, getContract(contractResource), method, data, amount);
+        return networkAdapter.contractsCall(node, false, from, getContract(contractResource), method, data, amount);
     }
 
     protected ContractCallResponse estimateContract(String data, String contractAddress) {
@@ -273,8 +271,8 @@ public abstract class AbstractFeature {
                 "classpath:solidity/artifacts/contracts/EquivalenceDestruct.sol/EquivalenceDestruct.json", 10000),
         EQUIVALENCE_PAYABLE(
                 "classpath:solidity/artifacts/contracts/EquivalenceContract.sol/EquivalencePayableContract.json",
-                10000), PRECOMPILE(
-                "classpath:solidity/artifacts/contracts/PrecompileTestContract.sol/PrecompileTestContract.json", 0),
+                10000),
+        PRECOMPILE("classpath:solidity/artifacts/contracts/PrecompileTestContract.sol/PrecompileTestContract.json", 0),
         ESTIMATE_GAS(
                 "classpath:solidity/artifacts/contracts/EstimateGasContract.sol/EstimateGasContract.json", 1000000),
         PARENT_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/Parent.json", 10000000);

@@ -19,15 +19,17 @@ package com.hedera.mirror.test.e2e.acceptance.client;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.hexToAscii;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
+import com.esaulpaugh.headlong.abi.Tuple;
 import com.esaulpaugh.headlong.abi.TupleType;
 import com.esaulpaugh.headlong.util.Strings;
+import com.google.protobuf.ByteString;
 import com.hedera.hashgraph.sdk.ContractFunctionResult;
 import com.hedera.hashgraph.sdk.Hbar;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
-import com.hedera.hashgraph.sdk.Status;
 import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.NodeNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.props.ContractCallRequest;
 import com.hedera.mirror.test.e2e.acceptance.response.ContractCallResponse;
+import com.hedera.mirror.test.e2e.acceptance.response.GeneralContractExecutionResponse;
 import com.hedera.mirror.test.e2e.acceptance.steps.AbstractFeature.DeployedContract;
 import com.hedera.mirror.test.e2e.acceptance.steps.AbstractFeature.SelectorInterface;
 import jakarta.inject.Named;
@@ -50,9 +52,11 @@ public class NetworkAdapter extends EncoderDecoderFacade {
     public static final String UINT256 = "(uint256)";
 
     public static final String BYTES = "(bytes)";
+    public static final String BOOL_BYTES = "(bool,bytes)";
 
     public static final TupleType BIG_INTEGER_TUPLE = TupleType.parse(UINT256);
     public static final TupleType BYTES_TUPLE = TupleType.parse(BYTES);
+    public static final TupleType BOOL_BYTES_TUPLE = TupleType.parse(BOOL_BYTES);
 
     public ContractCallResponse contractsCall(
             final NodeNameEnum node,
@@ -99,7 +103,7 @@ public class NetworkAdapter extends EncoderDecoderFacade {
         }
     }
 
-    public boolean contractsCall(
+    public GeneralContractExecutionResponse contractsCall(
             final NodeNameEnum node,
             boolean isEstimate,
             final String from,
@@ -113,11 +117,11 @@ public class NetworkAdapter extends EncoderDecoderFacade {
                     .to(deployedContract.contractId().toSolidityAddress())
                     .from(from.isEmpty() ? contractClient.getClientAddress() : from)
                     .estimate(isEstimate)
+                    .value(amount != null ? amount.toTinybars() : 0)
                     .build();
 
             var response = mirrorClient.contractsCall(contractCallRequestBody);
-            // TODO: implement the correct verification
-            return true;
+            return new GeneralContractExecutionResponse(response);
         } else {
             final var gas = contractClient
                     .getSdkClient()
@@ -125,11 +129,11 @@ public class NetworkAdapter extends EncoderDecoderFacade {
                     .getFeatureProperties()
                     .getMaxContractFunctionGas();
 
-            final var result = contractClient.executeContract(
-                    deployedContract.contractId(), gas, method, data, amount);
-            final var txId = result.networkTransactionResponse().getTransactionId().toString();
+            final var result = contractClient.executeContract(deployedContract.contractId(), gas, method, data, amount);
+            final var txId =
+                    result.networkTransactionResponse().getTransactionId().toString();
             final var errorMessage = extractInternalCallErrorMessage(extractTransactionId(txId));
-            return result.networkTransactionResponse().getReceipt().status == Status.SUCCESS && StringUtils.isEmpty(errorMessage);
+            return new GeneralContractExecutionResponse(txId, result.networkTransactionResponse(), errorMessage);
         }
     }
 
@@ -157,8 +161,11 @@ public class NetworkAdapter extends EncoderDecoderFacade {
             throw new IllegalArgumentException("The actions list must contain at least two elements.");
         }
 
-        String hexString = actions.get(1).getResultData();
-        return hexToAscii(hexString.replace("0x", ""));
+        if (!actions.get(1).getResultDataType().equalsIgnoreCase("OUTPUT")) {
+            String hexString = actions.get(1).getResultData();
+            return hexToAscii(hexString.replace("0x", ""));
+        }
+        return null;
     }
 
     private static String extractTransactionId(String message) {
@@ -170,4 +177,5 @@ public class NetworkAdapter extends EncoderDecoderFacade {
             return "Not found";
         }
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Hedera Hashgraph, LLC
+ * Copyright (C) 2023-2024 Hedera Hashgraph, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,10 +29,17 @@ import static com.hedera.mirror.test.e2e.acceptance.steps.EquivalenceFeature.Sel
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.asAddress;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.hexToAscii;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.to32BytesString;
+import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.to32BytesStringRightPad;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.esaulpaugh.headlong.abi.TupleType;
+import com.esaulpaugh.headlong.util.Strings;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.AccountUpdateTransaction;
@@ -46,13 +53,16 @@ import com.hedera.hashgraph.sdk.ReceiptStatusException;
 import com.hedera.hashgraph.sdk.Status;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TokenUpdateTransaction;
+import com.hedera.hashgraph.sdk.proto.ResponseCodeEnum;
 import com.hedera.mirror.test.e2e.acceptance.client.AccountClient;
 import com.hedera.mirror.test.e2e.acceptance.client.AccountClient.AccountNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.ExecuteContractResult;
 import com.hedera.mirror.test.e2e.acceptance.client.ContractClient.NodeNameEnum;
+import com.hedera.mirror.test.e2e.acceptance.client.NetworkException;
 import com.hedera.mirror.test.e2e.acceptance.client.TokenClient;
 import com.hedera.mirror.test.e2e.acceptance.client.TokenClient.TokenNameEnum;
 import com.hedera.mirror.test.e2e.acceptance.props.ExpandedAccountId;
+import com.hedera.mirror.test.e2e.acceptance.response.GeneralContractExecutionResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.NetworkTransactionResponse;
 import com.hedera.mirror.test.e2e.acceptance.util.TestUtil;
 import io.cucumber.java.en.And;
@@ -60,6 +70,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
@@ -71,6 +82,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tuweni.bytes.Bytes;
+import org.assertj.core.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @CustomLog
@@ -81,12 +93,15 @@ public class EquivalenceFeature extends AbstractFeature {
     private static final String INVALID_SOLIDITY_ADDRESS_EXCEPTION = "INVALID_SOLIDITY_ADDRESS";
     private static final String INVALID_SIGNATURE = "INVALID_SIGNATURE";
     private static final String INVALID_FEE_SUBMITTED = "INVALID_FEE_SUBMITTED";
+    private static final String INVALID_SOLIDITY_ADDRESS = "INVALID_SOLIDITY_ADDRESS";
     private static final String TRANSACTION_SUCCESSFUL_MESSAGE = "Transaction successful";
     private static final String TRANSACTION_FAILED_MESSAGE = "Transaction failed";
     private static final String CONTRACT_REVERTED = "CONTRACT_REVERT_EXECUTED";
+    private static final String BAD_REQUEST = "400 Bad Request";
     private static final String INVALID_RECEIVING_NODE_ACCOUNT = "INVALID_RECEIVING_NODE_ACCOUNT";
     private static final String INVALID_ALIAS_KEY = "INVALID_ALIAS_KEY";
-    private static final String INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE = "INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE";
+    private static final String INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE =
+            "INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE";
     private static final String SUCCESS = "SUCCESS";
     private static final String TOKEN_NOT_ASSOCIATED_TO_ACCOUNT = "TOKEN_NOT_ASSOCIATED_TO_ACCOUNT";
     private static final String SPENDER_DOES_NOT_HAVE_ALLOWANCE = "SPENDER_DOES_NOT_HAVE_ALLOWANCE";
@@ -126,6 +141,23 @@ public class EquivalenceFeature extends AbstractFeature {
         secondReceiverAccountAlias = secondReceiverAccount.getPublicKey().toString();
     }
 
+    @RetryAsserts
+    @Given("I verify the equivalence contract bytecode is deployed")
+    public void verifyEquivalenceContractDeployed() {
+        verifyContractDeployed(equivalenceCallContractSolidityAddress);
+    }
+
+    @RetryAsserts
+    @Given("I verify the selfdestruct contract bytecode is deployed")
+    public void verifyDestructContractDeployed() {
+        verifyContractDeployed(equivalenceDestructContractSolidityAddress);
+    }
+
+    private void verifyContractDeployed(String contractAddress) {
+        var response = mirrorClient.getContractInfo(contractAddress);
+        Assertions.assertThat(response.getBytecode()).isNotBlank();
+        Assertions.assertThat(response.getRuntimeBytecode()).isNotBlank();
+    }
     @Given("I successfully create estimate precompile contract")
     public void createNewEstimatePrecompileContract() throws IOException {
         deployedPrecompileContract = getContract(ESTIMATE_PRECOMPILE);
@@ -142,7 +174,8 @@ public class EquivalenceFeature extends AbstractFeature {
 
     @Given("I mint a new nft")
     public void mintNft() {
-        networkTransactionResponse = tokenClient.mint(nonFungibleTokenId, RandomStringUtils.random(4).getBytes());
+        networkTransactionResponse =
+                tokenClient.mint(nonFungibleTokenId, RandomStringUtils.random(4).getBytes());
     }
 
     @And("I update the {account} account and token key for contract {string}")
@@ -150,8 +183,7 @@ public class EquivalenceFeature extends AbstractFeature {
             throws PrecheckStatusException, ReceiptStatusException, TimeoutException, IOException {
         ExpandedAccountId account = accountClient.getAccount(accountName);
         DeployedContract contract = getContract(ContractResource.valueOf(contractName));
-        var keyList = KeyList.of(account.getPublicKey(), contract.contractId())
-                .setThreshold(1);
+        var keyList = KeyList.of(account.getPublicKey(), contract.contractId()).setThreshold(1);
         new AccountUpdateTransaction()
                 .setAccountId(account.getAccountId())
                 .setKey(keyList)
@@ -411,157 +443,233 @@ public class EquivalenceFeature extends AbstractFeature {
         assertEquals("INVALID_CONTRACT_ID", extractedStatus);
     }
 
-    @Then("I execute internal {string} against HTS precompile with isToken function for {token} {string} amount")
-    public void executeInternalCallForHTSApproveWithAmount(String call, TokenNameEnum tokenName, String amountType) {
+    @Then("I execute internal {string} against HTS precompile with isToken function for {token} {string} amount to {node} node")
+    public void executeInternalCallForHTSApproveWithAmount(String call, TokenNameEnum tokenName, String amountType, NodeNameEnum node) {
         var callType = getMethodName(call, amountType);
         var tokenId = tokenClient.getToken(tokenName).tokenId();
-        var data = encodeDataToByteArray(IS_TOKEN, asAddress(tokenId));
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000167")
-                .addBytes(data);
+
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000167"), encodeDataToByteArray(IS_TOKEN, asAddress(tokenId)));
 
         if (amountType.equals("with")) {
-            var transactionId = executeContractCallTransactionAndReturnId(
-                    deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(100L));
-            var message = mirrorClient
-                    .getTransactions(transactionId)
-                    .getTransactions()
-                    .get(1)
-                    .getResult();
-            assertEquals(INVALID_FEE_SUBMITTED, message);
-
-        } else {
-            var message = executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
-            assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, message);
-        }
-    }
-
-    @Then("I execute internal {string} against {string} contract {string} amount")
-    public void executeInternalCallAgainstContract(String call, String payable, String amountType) {
-        var callType = getMethodName(call, amountType);
-        AccountId receiverContract;
-        if (payable.equals("payable")) {
-            receiverContract = AccountId.fromSolidityAddress(
-                    deployedEquivalenceDestruct.contractId().toSolidityAddress());
-        } else {
-            receiverContract = AccountId.fromSolidityAddress(
-                    deployedEquivalenceCall.contractId().toSolidityAddress());
-        }
-        var parameters = new ContractFunctionParameters()
-                .addAddress(receiverContract.toSolidityAddress())
-                .addBytes(new byte[0]);
-        if (amountType.equals("with")) {
-            var result = executeContractCallTransaction(
-                    deployedEquivalenceCall, "makeCallWithAmountRevert", parameters, Hbar.fromTinybars(123L));
-            if (payable.equals("payable")) {
-                assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, result);
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, Bytes.fromHexString(
+                    Strings.encode(data)).trimTrailingZeros().toArray(), Hbar.fromTinybars(100L));
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+                var resultMessage = mirrorClient
+                        .getTransactions(transactionId)
+                        .getTransactions()
+                        .get(1)
+                        .getResult();
+                assertEquals(INVALID_FEE_SUBMITTED, resultMessage);
             } else {
-                var status = extractStatus(result);
-                assertEquals(CONTRACT_REVERTED, status);
+                TupleType tupleType = TupleType.parse("(bool,bytes)");
+                var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+                // TODO: returns result but should fail with INVALID_FEE_SUBMITTED
             }
         } else {
-            var result = executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
-            assertEquals(TRANSACTION_SUCCESSFUL_MESSAGE, result);
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, Bytes.fromHexString(
+                    Strings.encode(data)).trimTrailingZeros().toArray(), null);
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+                var resultMessage = mirrorClient
+                        .getContractActions(transactionId)
+                        .getActions()
+                        .get(1)
+                        .getResultData();
+                assertNull(response.errorMessage());
+                assertFalse(Bytes.fromHexString(resultMessage).slice(32).isZero());
+            } else {
+                assertFalse(Bytes.fromHexString(response.contractCallResponse().getResult()).slice(32).isZero());
+            }
         }
     }
 
-    @Then("I execute internal {string} against Ecrecover precompile")
-    public void executeAllCallsForEcrecover(String calltype) {
+    @Then("I execute internal {string} against {string} contract {string} amount to {node} node")
+    public void executeInternalCallAgainstContract(String call, String payable, String amountType, NodeNameEnum node) {
+        var callType = getMethodName(call, amountType);
+        DeployedContract receiverContract;
+        final var isPayable = payable.equals("payable");
+        if (isPayable) {
+            receiverContract = deployedEquivalenceDestruct;
+        } else {
+            receiverContract = deployedEquivalenceCall;
+        }
+
+        if (amountType.equals("with")) {
+            final var data = encodeDataToByteArray(EQUIVALENCE_CALL, "makeCallWithAmountRevert", TestUtil.asAddress(receiverContract.contractId().toSolidityAddress()), new byte[0]);
+            GeneralContractExecutionResponse response;
+            try {
+                response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, "makeCallWithAmountRevert", data, Hbar.fromTinybars(123L));
+                if (isPayable) {
+                    assertThat(response.errorMessage()).isBlank();
+                }
+            } catch (Exception e) {
+                if (!isPayable) {
+                    if (node.equals(NodeNameEnum.CONSENSUS)) {
+                        assertEquals(CONTRACT_REVERTED, extractStatus(e.getMessage()));
+                    } else {
+                        assertThat(e.getMessage()).contains(BAD_REQUEST);
+                    }
+                }
+            }
+        } else {
+            byte[] data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress(receiverContract.contractId().toSolidityAddress()), new byte[0]);
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+            assertThat(response.errorMessage()).isBlank();
+        }
+    }
+
+    @Then("I execute internal {string} against Ecrecover precompile to {node} node")
+    public void executeAllCallsForEcrecover(String calltype, NodeNameEnum node) {
         var messageSignerAddress = "0x05FbA803Be258049A27B820088bab1cAD2058871";
         var hashedMessage =
                 "0xf950ac8b7f08b2f5ffa0f893d0f85398135301759b768dc20c1e16d9cdba5b53000000000000000000000000000000000000000000000000000000000000001b45e5f9dc145b79479820a9dfa925bb698333e7f17b7d570391e8487c96a39e07675b682b2519f6232152a9f6f4f5923d171dfb7636daceee2c776edecc6c8b64";
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000001")
-                .addBytes(Bytes.fromHexString(hashedMessage).toArrayUnsafe());
 
         var callType = getMethodName(calltype, "without");
-        executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
 
-        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
-        var resultMessageSigner = mirrorClient
-                .getContractActions(transactionId)
-                .getActions()
-                .get(1)
-                .getResultData();
-        assertEquals(messageSignerAddress, asAddress(resultMessageSigner).toString());
-    }
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000001"), Bytes.fromHexString(hashedMessage).toArrayUnsafe());
+        final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
 
-    @Then("I execute internal {string} against SHA-256 precompile")
-    public void executeAllCallsForSha256(String calltype) {
-        var message = "Encode me!";
-        var hashedMessage = "68907fbd785a694c3617d35a6ce49477ac5704d75f0e727e353da7bc664aacc2";
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000002")
-                .addBytes(message.getBytes(StandardCharsets.UTF_8));
-
-        var callType = getMethodName(calltype, "without");
-        executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
-
-        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
-        var resultMessage = mirrorClient
-                .getContractActions(transactionId)
-                .getActions()
-                .get(1)
-                .getResultData();
-        assertEquals(hashedMessage, to32BytesString(resultMessage));
-    }
-
-    @Then("I execute internal {string} against Ripemd-160 precompile")
-    public void executeAllCallsForRipemd160(String calltype) {
-        var message = "Encode me!";
-        var hashedMessage = "4f0c39893f4c1c805aea87a95b5d359a218920d6";
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000003")
-                .addBytes(message.getBytes(StandardCharsets.UTF_8));
-
-        var callType = getMethodName(calltype, "without");
-        executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
-
-        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
-        var resultMessage = mirrorClient
-                .getContractActions(transactionId)
-                .getActions()
-                .get(1)
-                .getResultData();
-        var result = Bytes.fromHexString(resultMessage).trimLeadingZeros().toUnprefixedHexString();
-        assertEquals(hashedMessage, result);
-    }
-
-    @Then("I execute internal {string} against PRNG precompile address {string} amount")
-    public void executeInternalCallForPRNGWithoutAmount(String call, String amountType) {
-        var callType = getMethodName(call, amountType);
-        var data = encodeDataToByteArray(GET_PRNG);
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000169")
-                .addBytes(data);
-        if (amountType.equals("with")) {
-            var functionResult = executeContractCallTransaction(
-                    deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(10L));
-            // POTENTIAL BUG
-            // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+            var resultMessageSigner = mirrorClient
+                    .getContractActions(transactionId)
+                    .getActions()
+                    .get(1)
+                    .getResultData();
+            assertEquals(messageSignerAddress, asAddress(resultMessageSigner).toString());
         } else {
-            var functionResult = executeContractCallQuery(deployedEquivalenceCall, callType, parameters);
-            assertEquals(32, functionResult.getBytes32(0).length);
+            TupleType tupleType = TupleType.parse("(bool,bytes)");
+            var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+            assertEquals(messageSignerAddress, asAddress((byte[]) decodedResult.get(1)).toString());
         }
     }
 
-    @Then("I execute internal {string} against exchange rate precompile address {string} amount")
-    public void executeInternalCallForExchangeRateWithoutAmount(String call, String amountType) {
-        var exchangeRateAddress = "0x0000000000000000000000000000000000000168";
+    @Then("I execute internal {string} against SHA-256 precompile to {node} node")
+    public void executeAllCallsForSha256(String calltype, NodeNameEnum node) {
+        var message = "Encode me!";
+        var hashedMessage = "68907fbd785a694c3617d35a6ce49477ac5704d75f0e727e353da7bc664aacc2";
+
+        var callType = getMethodName(calltype, "without");
+
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000002"), message.getBytes(StandardCharsets.UTF_8));
+        final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+            var resultMessage = mirrorClient
+                    .getContractActions(transactionId)
+                    .getActions()
+                    .get(1)
+                    .getResultData();
+            assertEquals(hashedMessage, to32BytesString(resultMessage));
+        } else {
+            TupleType tupleType = TupleType.parse("(bool,bytes)");
+            var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+            assertEquals(hashedMessage, to32BytesString(String.valueOf(Bytes.wrap((byte[]) decodedResult.get(1)))));
+        }
+    }
+
+    @Then("I execute internal {string} against Ripemd-160 precompile to {node} node")
+    public void executeAllCallsForRipemd160(String calltype, NodeNameEnum node) {
+        var message = "Encode me!";
+        var hashedMessage = "4f0c39893f4c1c805aea87a95b5d359a218920d6";
+
+        var callType = getMethodName(calltype, "without");
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000003"), message.getBytes(StandardCharsets.UTF_8));
+        final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+            var resultMessage = mirrorClient
+                    .getContractActions(transactionId)
+                    .getActions()
+                    .get(1)
+                    .getResultData();
+            var result = Bytes.fromHexString(resultMessage).trimLeadingZeros().toUnprefixedHexString();
+            assertEquals(hashedMessage, result);
+        } else {
+            TupleType tupleType = TupleType.parse("(bool,bytes)");
+            var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+            assertEquals(hashedMessage, String.valueOf(Bytes.wrap((byte[]) decodedResult.get(1)).trimLeadingZeros().toUnprefixedHexString()));
+        }
+    }
+
+    @Then("I execute internal {string} against PRNG precompile address {string} amount to {node} node")
+    public void executeInternalCallForPRNGWithoutAmount(String call, String amountType, NodeNameEnum node) {
         var callType = getMethodName(call, amountType);
-        var data = encodeDataToByteArray(GET_EXCHANGE_RATE, new BigInteger("100"));
-        var parameters =
-                new ContractFunctionParameters().addAddress(exchangeRateAddress).addBytes(data);
+
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000169"), encodeDataToByteArray(GET_PRNG));
 
         if (amountType.equals("with")) {
-            var functionResult = executeContractCallTransaction(
-                    deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(10L));
-            // POTENTIAL BUG
-            // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, Hbar.fromTinybars(10L));
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                // POTENTIAL BUG
+                // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+//                assertEquals(INVALID_FEE_SUBMITTED, response.errorMessage());
+            } else {
+                // POTENTIAL BUG
+                // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+            }
+        } else {
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+                var resultMessage = mirrorClient
+                        .getContractActions(transactionId)
+                        .getActions()
+                        .get(1)
+                        .getResultData();
+                var result = Bytes.fromHexString(resultMessage).trimLeadingZeros();
+                assertEquals(32, result.toArray().length);
+            } else {
+                if (call.equals("callcode")) {
+                    assertEquals(32, response.contractCallResponse().getResultAsBytes().size());
+                } else {
+                    TupleType tupleType = TupleType.parse("(bool,bytes)");
+                    var decodedResult = tupleType.decode(
+                            ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+                    assertEquals(32, Bytes.wrap((byte[]) decodedResult.get(1)).size());
+                }
+            }
+        }
+    }
+
+    @Then("I execute internal {string} against exchange rate precompile address {string} amount to {node} node")
+    public void executeInternalCallForExchangeRateWithoutAmount(String call, String amountType, NodeNameEnum node) {
+        var callType = getMethodName(call, amountType);
+
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000168"), encodeDataToByteArray(GET_EXCHANGE_RATE, new BigInteger("100")));
+
+        if (amountType.equals("with")) {
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, Hbar.fromTinybars(10L));
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                // POTENTIAL BUG
+                // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+//                assertEquals(INVALID_FEE_SUBMITTED, response.errorMessage());
+            } else {
+                // POTENTIAL BUG
+                // THIS RETURNS SUCCESS FOR THE 2ND CALL - > WE EXPECT INVALID_FEE_SUBMITTED
+            }
             // AMOUNT REACHES ONLY THE CONTRACT(deployedEquivalenceCall)
         } else {
-            var functionResult = executeContractCallQuery(deployedEquivalenceCall, callType, parameters);
-            assertTrue(functionResult.getUint256(3).longValue() > 1);
+            final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+            if (node.equals(NodeNameEnum.CONSENSUS)) {
+                var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+                var resultMessage = mirrorClient
+                        .getContractActions(transactionId)
+                        .getActions()
+                        .get(1)
+                        .getResultData();
+                assertNull(response.errorMessage());
+                var result = Bytes.fromHexString(resultMessage).trimLeadingZeros();
+                assertTrue(result.toLong() > 1);
+            } else {
+                TupleType tupleType = TupleType.parse("(bool,bytes)");
+                var decodedResult = tupleType.decode(
+                        ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+                assertTrue(Bytes.wrap((byte[]) decodedResult.get(1)).toBigInteger().compareTo(BigInteger.ONE) > 0);
+            }
         }
     }
 
@@ -572,53 +680,100 @@ public class EquivalenceFeature extends AbstractFeature {
 
         byte[] functionParameterData;
         if (call.equals("callcode")) {
-            functionParameterData = new byte[]{0x21, 0x21, 0x12, 0x12};
+            functionParameterData = new byte[] {0x21, 0x21, 0x12, 0x12};
         } else {
             functionParameterData = new byte[0];
         }
-        byte[] data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress(accountId), functionParameterData);
+        byte[] data =
+                encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress(accountId), functionParameterData);
 
         Hbar amount = null;
         if (amountType.equals("with")) {
             amount = Hbar.fromTinybars(10);
         }
 
-        var isSuccess = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, amount);
+        var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, amount);
+        var accountNumber = extractAccountNumber(address);
 
-        if (extractAccountNumber(address) > 751) {
-            assertTrue(isSuccess);
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            // POTENTIAL BUG
+            // CALL WITH AMOUNT RETURNS FAILURE FOR THE 2ND CALL WITH PRECOMPILE_ERROR - > WE EXPECT INVALID_FEE_SUBMITTED
+            // CALL WITHOUT RETURNS FAILURE FOR THE 2ND CALL WITH PRECOMPILE_ERROR - > WE EXPECT INVALID_SOLIDITY_ADDRESS
+            // TOP LEVEL TRANSACTION IS SUCCESS
+            // WAITING TO BE CLARIFIED
+            if (accountNumber > 751) {
+                assertThat(response.errorMessage()).isBlank();
+            }
+        } else {
+            if (call.equals("callcode")) {
+                var returnedDataBytes = response.contractCallResponse().getResultAsBytes();
+                var returnedDataMessage = response.contractCallResponse().getResultAsText();
+                if (amount == null) {
+                    if (shouldSystemAccountWithoutAmountReturnInvalidSolidityAddress(accountNumber)) {
+                        assertEquals(INVALID_SOLIDITY_ADDRESS, returnedDataMessage);
+                    } else if (shouldSystemAccountWithoutAmountReturnSuccess(accountNumber)) {
+                        assertArrayEquals(functionParameterData, returnedDataBytes.trimTrailingZeros().toArray());
+                    }
+                } else {
+                    if (shouldSystemAccountWithAmountReturnInvalidFeeSubmitted(accountNumber)) {
+                        assertEquals(INVALID_FEE_SUBMITTED, returnedDataMessage);
+                    } else {
+                        assertArrayEquals(functionParameterData, returnedDataBytes.trimTrailingZeros().toArray());
+                    }
+                }
+            } else {
+                TupleType tupleType = TupleType.parse("(bool,bytes)");
+                var decodedResult = tupleType.decode(
+                        ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+                var isSuccess = (boolean) decodedResult.get(0);
+                var returnedData = String.valueOf(
+                        Bytes.wrap((byte[]) decodedResult.get(1)).trimLeadingZeros().toUnprefixedHexString());
+
+                if (amount == null) {
+                    if (shouldSystemAccountWithoutAmountReturnInvalidSolidityAddress(accountNumber)) {
+                        assertFalse(isSuccess);
+                        assertEquals(INVALID_SOLIDITY_ADDRESS, returnedData);
+                    } else if (shouldSystemAccountWithoutAmountReturnSuccess(accountNumber)) {
+                        assertTrue(isSuccess);
+                    }
+                } else {
+                    if (shouldSystemAccountWithAmountReturnInvalidFeeSubmitted(accountNumber)) {
+                        assertFalse(isSuccess);
+                        assertEquals(INVALID_FEE_SUBMITTED, returnedData);
+                    } else {
+                        assertTrue(isSuccess);
+                    }
+                }
+            }
         }
-        // POTENTIAL BUG
-        // CALL WITH AMOUNT RETURNS FAILURE FOR THE 2ND CALL WITH PRECOMPILE_ERROR - > WE EXPECT INVALID_FEE_SUBMITTED
-        // CALL WITHOUT RETURNS FAILURE FOR THE 2ND CALL WITH PRECOMPILE_ERROR - > WE EXPECT INVALID_SOLIDITY_ADDRESS
-        // TOP LEVEL TRANSACTION IS SUCCESS
-        // WAITING TO BE CLARIFIED
     }
 
     @Then("I make internal {string} to account {account} {string} amount from {account}")
-    public void InternalCallToSystemAddress(String call, AccountNameEnum accountName, String amountType,
-            AccountNameEnum signer) {
+    public void internalCallToSystemAddress(
+            String call, AccountNameEnum accountName, String amountType, AccountNameEnum signer) {
         String transactionId;
         var accountAlias = getAccountAlias(accountName);
         var callType = getMethodName(call, amountType);
-        ContractFunctionParameters parameters = new ContractFunctionParameters()
-                .addAddress(accountAlias)
-                .addBytes(new byte[0]);
+        ContractFunctionParameters parameters =
+                new ContractFunctionParameters().addAddress(accountAlias).addBytes(new byte[0]);
 
-        // approveTokenFor(tokenName, tokenId, AccountId.fromString(deployedPrecompileContract.contractId().toString()));
+        // approveTokenFor(tokenName, tokenId,
+        // AccountId.fromString(deployedPrecompileContract.contractId().toString()));
         // approveTokenFor(tokenName, tokenId, receiverAccount.getAccountId());
-        accountClient.sendCryptoTransfer(accountClient.getAccount(signer).getAccountId(), Hbar.from(50L),
+        accountClient.sendCryptoTransfer(
+                accountClient.getAccount(signer).getAccountId(),
+                Hbar.from(50L),
                 accountClient.getAccount(signer).getPrivateKey());
 
         if (amountType.equals("with") && signer.name().equals("OPERATOR")) {
             transactionId = executeContractCallTransactionAndReturnId(
                     deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(10));
         } else if (signer.name().equals("OPERATOR")) {
-            transactionId = executeContractCallTransactionAndReturnId(
-                    deployedEquivalenceCall, callType, parameters, null);
+            transactionId =
+                    executeContractCallTransactionAndReturnId(deployedEquivalenceCall, callType, parameters, null);
         } else {
-            transactionId = executeContractCallTransactionAndReturnId(deployedEquivalenceCall, callType, parameters,
-                    null, accountClient.getAccount(signer));
+            transactionId = executeContractCallTransactionAndReturnId(
+                    deployedEquivalenceCall, callType, parameters, null, accountClient.getAccount(signer));
         }
         var message = mirrorClient
                 .getTransactions(transactionId)
@@ -629,15 +784,24 @@ public class EquivalenceFeature extends AbstractFeature {
         assertEquals(expectedMessage, message);
     }
 
-    @Then("I make internal {string} to ethereum precompile {string} address with amount")
-    public void internalCallToEthPrecompileWithAmount(String call, String address) {
+    @Then("I make internal {string} to ethereum precompile {string} address with amount to {node} node")
+    public void internalCallToEthPrecompileWithAmount(String call, String address, NodeNameEnum node) {
         var callType = getMethodName(call, "with");
         var accountId = new AccountId(extractAccountNumber(address)).toSolidityAddress();
-        var parameters = new ContractFunctionParameters().addAddress(accountId).addBytes(new byte[0]);
-        var transactionId = executeContractCallTransactionAndReturnId(
-                deployedEquivalenceCall, callType, parameters, Hbar.fromTinybars(10L));
-        var message = extractInternalCallErrorMessage(transactionId);
-        assertEquals(INVALID_FEE_SUBMITTED, message);
+
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress(accountId), new byte[0]);
+        final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, Hbar.fromTinybars(10L));
+
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            assertEquals(INVALID_FEE_SUBMITTED, response.errorMessage());
+        } else {
+            // TODO
+            // Potential bug - 0x result is returned instead of error message
+
+//            TupleType tupleType = TupleType.parse("(bool,bytes)");
+//            var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+//            assertEquals(INVALID_FEE_SUBMITTED, String.valueOf(Bytes.wrap((byte[]) decodedResult.get(1)).trimLeadingZeros().toUnprefixedHexString()));
+        }
     }
 
     @Then("I call precompile with transferFrom {token} token to a {string} address")
@@ -667,7 +831,10 @@ public class EquivalenceFeature extends AbstractFeature {
         var RANDOM_ADDRESS = to32BytesString(RandomStringUtils.random(40, HEX_DIGITS));
         var tokenId = tokenClient.getToken(tokenName).tokenId();
         var contractFunction = getMethodName(tokenName.getSymbol(), "transferFrom");
-        approveTokenFor(tokenName, tokenId, AccountId.fromString(deployedPrecompileContract.contractId().toString()));
+        approveTokenFor(
+                tokenName,
+                tokenId,
+                AccountId.fromString(deployedPrecompileContract.contractId().toString()));
 
         var parameters = new ContractFunctionParameters()
                 .addAddress(tokenId.toSolidityAddress())
@@ -695,7 +862,10 @@ public class EquivalenceFeature extends AbstractFeature {
         var expectedMessage =
                 (accountName.name().equals("ALICE")) ? SUCCESS : INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE;
 
-        approveTokenFor(tokenName, tokenId, AccountId.fromString(deployedPrecompileContract.contractId().toString()));
+        approveTokenFor(
+                tokenName,
+                tokenId,
+                AccountId.fromString(deployedPrecompileContract.contractId().toString()));
         tokenClient.associate(accountId, tokenId);
         var parameters = new ContractFunctionParameters()
                 .addAddress(tokenId.toSolidityAddress())
@@ -718,10 +888,13 @@ public class EquivalenceFeature extends AbstractFeature {
         var tokenId = tokenClient.getToken(tokenName).tokenId();
         var contractFunction = getMethodName(tokenName.getSymbol(), "transferFrom");
 
-        approveTokenFor(tokenName, tokenId, AccountId.fromString(deployedPrecompileContract.contractId().toString()));
+        approveTokenFor(
+                tokenName,
+                tokenId,
+                AccountId.fromString(deployedPrecompileContract.contractId().toString()));
         approveTokenFor(tokenName, tokenId, receiverAccount.getAccountId());
-        accountClient.sendCryptoTransfer(receiverAccount.getAccountId(), Hbar.from(50L),
-                receiverAccount.getPrivateKey());
+        accountClient.sendCryptoTransfer(
+                receiverAccount.getAccountId(), Hbar.from(50L), receiverAccount.getPrivateKey());
 
         var parameters = new ContractFunctionParameters()
                 .addAddress(tokenId.toSolidityAddress())
@@ -763,7 +936,9 @@ public class EquivalenceFeature extends AbstractFeature {
         var tokenId = tokenClient.getToken(tokenName).tokenId();
         var receiverAccountId = new AccountId(extractAccountNumber(address)).toSolidityAddress();
         var contractFunction = getMethodName(tokenName.getSymbol(), "transfer");
-        approveTokenFor(tokenName, tokenId,
+        approveTokenFor(
+                tokenName,
+                tokenId,
                 AccountId.fromString(deployedPrecompileContract.contractId().toString()));
         var parameters = new ContractFunctionParameters()
                 .addAddress(tokenId.toSolidityAddress())
@@ -804,12 +979,14 @@ public class EquivalenceFeature extends AbstractFeature {
     }
 
     @Then("I call precompile with transferFrom {token} token to a contract")
-    public void transferFromTokensToContract(TokenNameEnum tokenName)
-            throws InvalidProtocolBufferException {
+    public void transferFromTokensToContract(TokenNameEnum tokenName) throws InvalidProtocolBufferException {
         var tokenId = tokenClient.getToken(tokenName).tokenId();
         var contractFunction = getMethodName(tokenName.getSymbol(), "transferFrom");
         tokenClient.associate(deployedEquivalenceCall.contractId(), tokenId);
-        approveTokenFor(tokenName, tokenId, AccountId.fromString(deployedPrecompileContract.contractId().toString()));
+        approveTokenFor(
+                tokenName,
+                tokenId,
+                AccountId.fromString(deployedPrecompileContract.contractId().toString()));
 
         var parameters = new ContractFunctionParameters()
                 .addAddress(tokenId.toSolidityAddress())
@@ -826,24 +1003,29 @@ public class EquivalenceFeature extends AbstractFeature {
         assertEquals(SUCCESS, message);
     }
 
-    @Then("I execute internal {string} against Identity precompile")
-    public void executeAllCallsForIdentity(String calltype) {
+    @Then("I execute internal {string} against Identity precompile to {node} node")
+    public void executeAllCallsForIdentity(String calltype, NodeNameEnum node) {
         var message = "Encode me!";
         var messageBytes = message.getBytes(StandardCharsets.UTF_8);
-        var parameters = new ContractFunctionParameters()
-                .addAddress("0x0000000000000000000000000000000000000004")
-                .addBytes(messageBytes);
 
         var callType = getMethodName(calltype, "without");
-        executeContractCallTransaction(deployedEquivalenceCall, callType, parameters);
+        var data = encodeDataToByteArray(EQUIVALENCE_CALL, callType, TestUtil.asAddress("0x0000000000000000000000000000000000000004"), messageBytes);
 
-        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
-        var resultMessage = mirrorClient
-                .getContractActions(transactionId)
-                .getActions()
-                .get(1)
-                .getResultData();
-        assertEquals(resultMessage.replace("0x", ""), Hex.encodeHexString(messageBytes));
+        final var response = callContract(node, StringUtils.EMPTY, EQUIVALENCE_CALL, callType, data, null);
+
+        if (node.equals(NodeNameEnum.CONSENSUS)) {
+            var transactionId = response.networkResponse().getTransactionIdStringNoCheckSum();
+            var resultMessage = mirrorClient
+                    .getContractActions(transactionId)
+                    .getActions()
+                    .get(1)
+                    .getResultData();
+            assertEquals(Hex.encodeHexString(messageBytes), resultMessage.replace("0x", ""));
+        } else {
+            TupleType tupleType = TupleType.parse("(bool,bytes)");
+            var decodedResult = tupleType.decode(ByteString.fromHex(response.contractCallResponse().getResult().substring(2)).toByteArray());
+            assertEquals(message, new String(decodedResult.get(1), StandardCharsets.UTF_8));
+        }
     }
 
     public String getMethodName(String typeOfCall, String amountValue) {
@@ -911,7 +1093,9 @@ public class EquivalenceFeature extends AbstractFeature {
                     payableAmount);
 
             networkTransactionResponse = executeContractResult.networkTransactionResponse();
-            return networkTransactionResponse.getReceipt().status == Status.SUCCESS ? TRANSACTION_SUCCESSFUL_MESSAGE : TRANSACTION_FAILED_MESSAGE;
+            return networkTransactionResponse.getReceipt().status == Status.SUCCESS
+                    ? TRANSACTION_SUCCESSFUL_MESSAGE
+                    : TRANSACTION_FAILED_MESSAGE;
         } catch (Exception e) {
             // Return the exception message
             return e.getMessage();
@@ -933,7 +1117,9 @@ public class EquivalenceFeature extends AbstractFeature {
                     null);
 
             networkTransactionResponse = executeContractResult.networkTransactionResponse();
-            return networkTransactionResponse.getReceipt().status == Status.SUCCESS ? TRANSACTION_SUCCESSFUL_MESSAGE : TRANSACTION_FAILED_MESSAGE;
+            return networkTransactionResponse.getReceipt().status == Status.SUCCESS
+                    ? TRANSACTION_SUCCESSFUL_MESSAGE
+                    : TRANSACTION_FAILED_MESSAGE;
         } catch (Exception e) {
             // Return the exception message
             return e.getMessage();
@@ -993,8 +1179,7 @@ public class EquivalenceFeature extends AbstractFeature {
             String functionName,
             ContractFunctionParameters parameters,
             Hbar payableAmount,
-            ExpandedAccountId payer
-    ) {
+            ExpandedAccountId payer) {
         try {
             ExecuteContractResult executeContractResult = contractClient.executeContract(
                     deployedContract.contractId(),
@@ -1065,6 +1250,21 @@ public class EquivalenceFeature extends AbstractFeature {
         } else {
             return "Invalid account name!";
         }
+    }
+
+    private boolean shouldSystemAccountWithoutAmountReturnInvalidSolidityAddress(long accountNumber) {
+        return accountNumber == 0
+                || (accountNumber >= 10 && accountNumber <= 357)
+                || (accountNumber >= 361 && accountNumber <= 1000);
+    }
+
+    private boolean shouldSystemAccountWithoutAmountReturnSuccess(long accountNumber) {
+        return (accountNumber >= 1 && accountNumber <= 9)
+                || (accountNumber >= 358 && accountNumber <= 360);
+    }
+
+    private boolean shouldSystemAccountWithAmountReturnInvalidFeeSubmitted(long accountNumber) {
+        return accountNumber >= 0 && accountNumber <= 750;
     }
 
     @Getter

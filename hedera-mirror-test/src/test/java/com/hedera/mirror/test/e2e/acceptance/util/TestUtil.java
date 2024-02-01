@@ -87,6 +87,12 @@ public class TestUtil {
         return Address.wrap(Address.toChecksumAddress(addressAsInteger));
     }
 
+    public static Address asAddress(byte[] bytes) {
+        final var addressBytes = Bytes.wrap(bytes);
+        final var addressAsInteger = addressBytes.toUnsignedBigInteger();
+        return Address.wrap(Address.toChecksumAddress(addressAsInteger));
+    }
+
     public static Address asAddress(ExpandedAccountId accountId) {
         final var address = accountId.getAccountId().toSolidityAddress();
         final var addressBytes = Bytes.fromHexString(address.startsWith("0x") ? address : "0x" + address);

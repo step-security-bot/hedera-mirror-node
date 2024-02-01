@@ -288,6 +288,5 @@ public class ContractClient extends AbstractNetworkClient {
     }
 
     public record ExecuteContractResult(
-            ContractFunctionResult contractFunctionResult, NetworkTransactionResponse networkTransactionResponse) {
-    }
+            ContractFunctionResult contractFunctionResult, NetworkTransactionResponse networkTransactionResponse) {}
 }
