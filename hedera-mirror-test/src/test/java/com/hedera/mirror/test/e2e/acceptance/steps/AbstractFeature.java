@@ -142,7 +142,7 @@ abstract class AbstractFeature {
     }
 
     protected FileId persistContractBytes(String contractContents) {
-        networkTransactionResponse = fileClient.createFile(new byte[] {});
+        networkTransactionResponse = fileClient.createFile(new byte[]{});
         assertNotNull(networkTransactionResponse.getTransactionId());
         assertNotNull(networkTransactionResponse.getReceipt());
         var fileId = networkTransactionResponse.getReceipt().fileId;
@@ -162,7 +162,8 @@ abstract class AbstractFeature {
     }
 
     protected record DeployedContract(
-            FileId fileId, ContractId contractId, CompiledSolidityArtifact compiledSolidityArtifact) {}
+            FileId fileId, ContractId contractId, CompiledSolidityArtifact compiledSolidityArtifact) {
+    }
 
     protected CompiledSolidityArtifact readCompiledArtifact(InputStream in) throws IOException {
         return mapper.readValue(in, CompiledSolidityArtifact.class);
@@ -241,7 +242,7 @@ abstract class AbstractFeature {
         PRECOMPILE("classpath:solidity/artifacts/contracts/PrecompileTestContract.sol/PrecompileTestContract.json", 0),
         ESTIMATE_GAS(
                 "classpath:solidity/artifacts/contracts/EstimateGasContract.sol/EstimateGasContract.json", 1000000),
-        PARENT_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/Parent.json", 10000000);
+        PARENT_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/Parent.json", 1000000000);
 
         private final String path;
         private final int initialBalance;

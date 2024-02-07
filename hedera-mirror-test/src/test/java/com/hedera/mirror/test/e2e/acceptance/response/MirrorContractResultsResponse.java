@@ -23,4 +23,5 @@ import lombok.Data;
 @Data
 public class MirrorContractResultsResponse {
     List<MirrorContractResult> results;
+    private long gasConsumed;
 }

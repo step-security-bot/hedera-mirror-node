@@ -24,4 +24,5 @@ public class MirrorContractResultResponse extends MirrorContractResult {
     private String blockHash;
     private Long blockNumber;
     private String hash;
+    private Long gasConsumed;
 }

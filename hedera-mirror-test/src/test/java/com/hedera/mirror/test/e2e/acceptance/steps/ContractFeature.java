@@ -36,6 +36,7 @@ import com.hedera.mirror.test.e2e.acceptance.props.MirrorContractResult;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorTransaction;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorContractResponse;
 import com.hedera.mirror.test.e2e.acceptance.response.MirrorContractResultResponse;
+import com.hedera.mirror.test.e2e.acceptance.response.MirrorContractResultsResponse;
 import com.hedera.mirror.test.e2e.acceptance.util.FeatureInputHandler;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
@@ -79,12 +80,20 @@ public class ContractFeature extends AbstractFeature {
     @Given("I successfully create a contract from the parent contract bytes with 10000000 balance")
     public void createNewContract() throws IOException {
         deployedParentContract = getContract(ContractResource.PARENT_CONTRACT);
+        //verify gas consumed
+        var gasConsumedByTransactionId = getGasConsumedByTransactionId(); //187078
+        //for 30 accounts created gas = 3060493
+        //get the contractId
+        var contractId = deployedParentContract.contractId();
+        var gasConsumedByContractId = getGasConsumedByContractId(contractId); //returns 0 ??
+        // in explorer is 187078
     }
 
     @Given("I successfully call the contract")
     public void callContract() {
         // log and results to be verified
         executeCreateChildTransaction(1000);
+        assertThat(getGasConsumedByTransactionId()).isNotNull(); //132582
     }
 
     @Given("I successfully update the contract")
@@ -118,6 +127,7 @@ public class ContractFeature extends AbstractFeature {
         var mirrorTransaction = verifyMirrorTransactionsResponse(mirrorClient, status);
         assertThat(mirrorTransaction.getEntityId())
                 .isEqualTo(deployedParentContract.contractId().toString());
+        //maybe should check the gas_consumed
     }
 
     @Then("the mirror node REST API should return status {int} for the self destruct transaction")
@@ -147,7 +157,7 @@ public class ContractFeature extends AbstractFeature {
     public void verifyContractFunctionCallMirror() {
         verifyContractFromMirror(false);
         verifyContractExecutionResultsById();
-        verifyContractExecutionResultsByTransactionId();
+        verifyContractExecutionResultsByTransactionId(); //132582
     }
 
     @Then("I call the contract via the mirror node REST API")
@@ -204,6 +214,7 @@ public class ContractFeature extends AbstractFeature {
         assertThatThrownBy(() -> mirrorClient.contractsCall(contractCallWrongSelector))
                 .isInstanceOf(WebClientResponseException.class)
                 .hasMessageContaining("400 Bad Request from POST");
+        //should check gas_consumed
     }
 
     @Then("the mirror node REST API should verify the deleted contract entity")
@@ -217,6 +228,7 @@ public class ContractFeature extends AbstractFeature {
         childContractBytecodeFromParent =
                 executeContractResult.contractFunctionResult().getBytes(0);
         assertNotNull(childContractBytecodeFromParent);
+        //check gas_consumed
     }
 
     @When("I call the parent contract evm address function with the bytecode of the child contract")
@@ -226,6 +238,9 @@ public class ContractFeature extends AbstractFeature {
                 executeContractResult.contractFunctionResult().getAddress(0);
         create2ChildContractAccountId = AccountId.fromEvmAddress(create2ChildContractEvmAddress);
         create2ChildContractContractId = ContractId.fromEvmAddress(0, 0, create2ChildContractEvmAddress);
+        //check gas_consumed
+        getGasConsumedByTransactionId(); //22038
+
     }
 
     @And("I create a hollow account using CryptoTransfer of {int} to the evm address")
@@ -272,6 +287,7 @@ public class ContractFeature extends AbstractFeature {
     @When("I create a child contract by calling parent contract function to deploy using CREATE2")
     public void createChildContractUsingCreate2() {
         executeCreate2Transaction(EVM_ADDRESS_SALT);
+        getGasConsumedByTransactionId(); //99403
     }
 
     @And("the mirror node REST API should retrieve the child contract when using evm address")
@@ -300,6 +316,7 @@ public class ContractFeature extends AbstractFeature {
         assertEquals(
                 create2ChildContractEvmAddress,
                 mirrorContractResponse.getEvmAddress().replaceFirst("0x", ""));
+        //verify gas_consumed
     }
 
     @And("the mirror node REST API should verify the account is no longer hollow")
@@ -312,6 +329,7 @@ public class ContractFeature extends AbstractFeature {
     @When("I successfully delete the child contract by calling it and causing it to self destruct")
     public void deleteChildContractUsingSelfDestruct() {
         executeSelfDestructTransaction();
+        getGasConsumedByTransactionId(); //31878
     }
 
     private MirrorContractResponse verifyContractFromMirror(boolean isDeleted) {
@@ -381,6 +399,18 @@ public class ContractFeature extends AbstractFeature {
         assertThat(contractResult.getBlockHash()).isNotBlank();
         assertThat(contractResult.getBlockNumber()).isPositive();
         assertThat(contractResult.getHash()).isNotBlank();
+        assertThat(contractResult.getGasConsumed()).isNotNull();
+    }
+
+    private Long getGasConsumedByTransactionId() {
+        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
+                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+        return contractResult.getGasConsumed();
+    }
+
+    private Long getGasConsumedByContractId(ContractId contractId) {
+        MirrorContractResultsResponse contractResult = mirrorClient.getContractResultsById(contractId.toString());
+        return contractResult.getGasConsumed();
     }
 
     private boolean isEmptyHex(String hexString) {
