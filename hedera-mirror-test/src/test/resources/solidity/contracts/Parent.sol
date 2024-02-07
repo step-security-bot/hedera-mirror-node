@@ -36,12 +36,19 @@ contract Child {
  *
  */
 contract Parent {
-    address[2] childAddresses;
+    address[50] childAddresses;
 
     constructor() payable {
         Child firstChild = new Child();
         childAddresses[0] = address(firstChild);
         emit ParentActivityLog("Created first child contract");
+        for (uint i = 1; i < 30; i++) {
+            childAddresses[i] = address(new Child());
+            //emit ParentActivityLog("Created child contract");
+
+            //  payable(childAddresses[i]).transfer(1);
+
+        }
     }
 
     function createChild(uint256 amount) public returns (address) {
@@ -107,11 +114,11 @@ contract Parent {
         */
         assembly {
             addr := create2(
-            callvalue(), // wei sent with current call
+                callvalue(), // wei sent with current call
             // Actual code starts after skipping the first 32 bytes
-            add(bytecode, 0x20),
-            mload(bytecode), // Load the size of code contained in the first 32 bytes
-            _salt // Salt from function arguments
+                add(bytecode, 0x20),
+                mload(bytecode), // Load the size of code contained in the first 32 bytes
+                _salt // Salt from function arguments
             )
 
             if iszero(extcodesize(addr)) {
