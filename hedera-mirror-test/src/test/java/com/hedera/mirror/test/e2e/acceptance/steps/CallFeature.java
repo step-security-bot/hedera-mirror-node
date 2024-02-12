@@ -68,6 +68,7 @@ import com.hedera.mirror.test.e2e.acceptance.client.AccountClient.AccountNameEnu
 import com.hedera.mirror.test.e2e.acceptance.client.MirrorNodeClient;
 import com.hedera.mirror.test.e2e.acceptance.client.TokenClient;
 import com.hedera.mirror.test.e2e.acceptance.props.ExpandedAccountId;
+import com.hedera.mirror.test.e2e.acceptance.response.MirrorContractResultResponse;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -114,7 +115,7 @@ public class CallFeature extends AbstractFeature {
         address1 = new BigInteger(address1, 16).toString(16);
         address2 = new BigInteger(address2, 16).toString(16);
 
-        return new String[] {address1, address2};
+        return new String[]{address1, address2};
     }
 
     @RetryAsserts
@@ -234,6 +235,8 @@ public class CallFeature extends AbstractFeature {
         var response = callContract(data, ercContractAddress);
 
         assertThat(response.getResultAsText()).isEqualTo(tokenNameEnum.getSymbol() + "_name");
+        var gasConsumed = getGasConsumedByTransactionId(); //254 689
+
     }
 
     // ETHCALL-018
@@ -740,6 +743,12 @@ public class CallFeature extends AbstractFeature {
 
     private long getTotalSupplyOfToken(TokenId tokenId) {
         return mirrorClient.getTokenInfo(tokenId.toString()).getTotalSupply().longValue();
+    }
+
+    private Long getGasConsumedByTransactionId() {
+        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
+                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+        return contractResult.getGasConsumed();
     }
 
     @Getter

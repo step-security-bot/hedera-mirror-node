@@ -1,0 +1,42 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Deploys10Contracts",
+  "sourceName": "contracts/GasContractTests.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "childContract",
+      "outputs": [
+        {
+          "internalType": "contract Deploys2Contracts",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50600080546001600160a01b0319163317905560015b601481101561007057600060405161003d90610076565b604051809103906000f080158015610059573d6000803e3d6000fd5b50905050808061006890610082565b915050610026565b506100ab565b60c98061018d83390190565b60006000198214156100a457634e487b7160e01b600052601160045260246000fd5b5060010190565b60d4806100b96000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80638da5cb5b146037578063e626223a14607f575b600080fd5b60005460569073ffffffffffffffffffffffffffffffffffffffff1681565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b60015460569073ffffffffffffffffffffffffffffffffffffffff168156fea2646970667358221220ce12fb26ccd09075ee4531b918b64122c525030ed845e0a9bbef842500bcf30664736f6c634300080900336080604052348015600f57600080fd5b5060ab8061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80638da5cb5b14602d575b600080fd5b600054604c9073ffffffffffffffffffffffffffffffffffffffff1681565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f3fea26469706673582212201767ba3bfdfffa4ef21b317dc878efdb8b6184295fb9542f6d72ee7f5e0d0f7d64736f6c63430008090033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80638da5cb5b146037578063e626223a14607f575b600080fd5b60005460569073ffffffffffffffffffffffffffffffffffffffff1681565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b60015460569073ffffffffffffffffffffffffffffffffffffffff168156fea2646970667358221220ce12fb26ccd09075ee4531b918b64122c525030ed845e0a9bbef842500bcf30664736f6c63430008090033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

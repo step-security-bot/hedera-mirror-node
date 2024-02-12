@@ -39,16 +39,17 @@ contract Parent {
     address[50] childAddresses;
 
     constructor() payable {
-        Child firstChild = new Child();
-        childAddresses[0] = address(firstChild);
+//        Child firstChild = new Child();
+//        childAddresses[0] = address(firstChild);
+//        ChainContract chainContract = new ChainContract();
         emit ParentActivityLog("Created first child contract");
-        for (uint i = 1; i < 30; i++) {
-            childAddresses[i] = address(new Child());
-            //emit ParentActivityLog("Created child contract");
-
-            //  payable(childAddresses[i]).transfer(1);
-
-        }
+//        for (uint i = 1; i < 20; i++) {
+//            childAddresses[i] = address(new Child());
+//            //emit ParentActivityLog("Created child contract");
+//
+//            //  payable(childAddresses[i]).transfer(1);
+//
+//        }
     }
 
     function createChild(uint256 amount) public returns (address) {
@@ -131,4 +132,27 @@ contract Parent {
 
     event ParentActivityLog(string message);
     event Create2Deploy(address addr);
+}
+
+contract ChildContract {
+    address public owner;
+    ChainContract  public chainContract;
+
+    constructor() {
+        owner = msg.sender;
+        // Deploy Chain within ChildContract constructor
+        //  chainContract = new ChainContract();
+        Child firstChild = new Child();
+    }
+}
+
+contract ChainContract {
+    // address public owner;
+    //  ChildContract public childContract;
+
+    // constructor() {
+    // owner = msg.sender;
+    // Deploy ChildContract within ChainContract constructor
+    // childContract = new ChildContract();
+    // }
 }

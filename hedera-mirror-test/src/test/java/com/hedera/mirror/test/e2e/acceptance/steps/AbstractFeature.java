@@ -242,7 +242,22 @@ abstract class AbstractFeature {
         PRECOMPILE("classpath:solidity/artifacts/contracts/PrecompileTestContract.sol/PrecompileTestContract.json", 0),
         ESTIMATE_GAS(
                 "classpath:solidity/artifacts/contracts/EstimateGasContract.sol/EstimateGasContract.json", 1000000),
-        PARENT_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/Parent.json", 1000000000);
+        PARENT_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/Parent.json", 1000000000),
+        CHAIN_CONTRACT("classpath:solidity/artifacts/contracts/Parent.sol/ChainContract.json", 1000000000),
+        TEST("classpath:solidity/artifacts/contracts/GasContractTests.sol/ContractWithConstructor.json", 0),
+        CONTRACT_WITH_CONSTRUCTOR(
+                "classpath:solidity/artifacts/contracts/GasContractTests.sol/ContractWithConstructor.json", 0),
+        EMPTY_CONTRACT("classpath:solidity/artifacts/contracts/GasContractTests.sol/EmptyContract.json", 0),
+        DEPLOYS_1_CONTRACT("classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys1Contract.json", 0),
+        DEPLOYS_2_CONTRACTS("classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys2Contracts.json", 0),
+        DEPLOYS_3_CONTRACTS("classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys3Contracts.json", 0),
+        DEPLOYS_10_CONTRACTS("classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys10Contracts.json", 0),
+        DEPLOYS_33_CONTRACTS(
+                "classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys33NestedContracts.json", 0),
+
+        DEPLOYS_13_CONTRACTS(
+                "classpath:solidity/artifacts/contracts/GasContractTests.sol/Deploys13NestedContracts.json", 0);
+
 
         private final String path;
         private final int initialBalance;

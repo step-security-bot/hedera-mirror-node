@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ChainContract",
+  "sourceName": "contracts/Parent.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220fd5bb8a6a899cc7e60010fb414321561c3ad6e794c5e076306638c61e1f382dd64736f6c63430008090033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220fd5bb8a6a899cc7e60010fb414321561c3ad6e794c5e076306638c61e1f382dd64736f6c63430008090033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

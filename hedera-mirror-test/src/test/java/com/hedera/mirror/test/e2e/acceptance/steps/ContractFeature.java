@@ -64,6 +64,8 @@ public class ContractFeature extends AbstractFeature {
     private static final String ACCOUNT_EMPTY_KEYLIST = "3200";
     private static final int EVM_ADDRESS_SALT = 42;
     private DeployedContract deployedParentContract;
+    private DeployedContract deployedTestContract;
+
     private final AccountClient accountClient;
     private final MirrorNodeClient mirrorClient;
     private final Web3Properties web3Properties;
@@ -80,13 +82,34 @@ public class ContractFeature extends AbstractFeature {
     @Given("I successfully create a contract from the parent contract bytes with 10000000 balance")
     public void createNewContract() throws IOException {
         deployedParentContract = getContract(ContractResource.PARENT_CONTRACT);
-        //verify gas consumed
-        var gasConsumedByTransactionId = getGasConsumedByTransactionId(); //187078
-        //for 30 accounts created gas = 3060493
-        //get the contractId
-        var contractId = deployedParentContract.contractId();
-        var gasConsumedByContractId = getGasConsumedByContractId(contractId); //returns 0 ??
-        // in explorer is 187078
+
+        deployedTestContract = getContract(ContractResource.EMPTY_CONTRACT);
+        var gasConsumedEmptyContract = getGasConsumedByTransactionId(); //56183
+
+        deployedTestContract = getContract(ContractResource.CONTRACT_WITH_CONSTRUCTOR);
+        var gasConsumedContractWithConstructor = getGasConsumedByTransactionId(); //78594
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_1_CONTRACT);
+        var gasConsumedDeploys1Contract = getGasConsumedByTransactionId(); //115577
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_2_CONTRACTS);
+        var gasConsumedDeploys2Contracts = getGasConsumedByTransactionId(); //229430
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_3_CONTRACTS);
+        var gasConsumedDeploys3Contracts = getGasConsumedByTransactionId(); //397775
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_10_CONTRACTS);
+        var gasConsumedDeploys10Contracts = getGasConsumedByTransactionId(); //700504
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_13_CONTRACTS);
+        var gasConsumedDeploys13Contracts = getGasConsumedByTransactionId();// 1937336
+
+        deployedTestContract = getContract(ContractResource.DEPLOYS_33_CONTRACTS);
+        var gasConsumedDeploys33Contracts = getGasConsumedByTransactionId(); //3245337
+        //"gas_limit": 3000000,
+        //"gas_used": 2400000,
+        //"gas_consumed": 3245337,
+
     }
 
     @Given("I successfully call the contract")

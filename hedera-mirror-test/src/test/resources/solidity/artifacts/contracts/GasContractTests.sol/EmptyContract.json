@@ -1,0 +1,24 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "EmptyContract",
+  "sourceName": "contracts/GasContractTests.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5060ab8061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80638da5cb5b14602d575b600080fd5b600054604c9073ffffffffffffffffffffffffffffffffffffffff1681565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f3fea26469706673582212201767ba3bfdfffa4ef21b317dc878efdb8b6184295fb9542f6d72ee7f5e0d0f7d64736f6c63430008090033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c80638da5cb5b14602d575b600080fd5b600054604c9073ffffffffffffffffffffffffffffffffffffffff1681565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f3fea26469706673582212201767ba3bfdfffa4ef21b317dc878efdb8b6184295fb9542f6d72ee7f5e0d0f7d64736f6c63430008090033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
