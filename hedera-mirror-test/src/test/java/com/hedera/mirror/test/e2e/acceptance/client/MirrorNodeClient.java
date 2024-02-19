@@ -211,6 +211,12 @@ public class MirrorNodeClient {
                 "/contracts/results/{transactionId}", MirrorContractResultResponse.class, transactionId);
     }
 
+    public MirrorContractResultResponse getContractResultActionsByTransactionId(String transactionId) {
+        log.debug("Verify contract result '{}' is returned by Mirror Node", transactionId);
+        return callRestEndpoint(
+                "/contracts/results/{transactionId}/actions", MirrorContractResultResponse.class, transactionId);
+    }
+
     public ExchangeRateResponse getExchangeRates() {
         log.debug("Get exchange rates by Mirror Node");
         return callRestEndpoint("/network/exchangerate", ExchangeRateResponse.class);

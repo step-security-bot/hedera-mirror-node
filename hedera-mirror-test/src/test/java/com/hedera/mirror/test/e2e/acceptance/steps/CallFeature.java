@@ -128,6 +128,17 @@ public class CallFeature extends AbstractFeature {
     public void createNewERCtestContract() throws IOException {
         deployedErcTestContract = getContract(ERC);
         ercContractAddress = deployedErcTestContract.contractId().toSolidityAddress();
+
+        //CALL
+        var gasConsumed = getGasConsumedByTransactionId();
+        var gasUsed = getAllActionsGas();
+        assertThat(gasConsumed + 21000).isEqualTo(gasUsed);
+        //verify gas_consumed < gas_+used
+        //verify gas_consumed < gasLimit
+
+        //CREATE
+        //verify gas_consumed < gas_+used
+        //verify gas_consumed < gasLimit
     }
 
     @Given("I successfully create Precompile contract")
@@ -749,6 +760,13 @@ public class CallFeature extends AbstractFeature {
         MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
                 networkTransactionResponse.getTransactionIdStringNoCheckSum());
         return contractResult.getGasConsumed();
+    }
+
+    private long getAllActionsGas() {
+        MirrorContractResultResponse contractResult = mirrorClient.getContractResultActionsByTransactionId(
+                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+        //forach contractResult (gasused ++)
+        return contractResult.getGasConsumed(); // return gas~Used
     }
 
     @Getter
