@@ -16,18 +16,15 @@
 
 package com.hedera.mirror.test.e2e.acceptance.response;
 
-import com.hedera.mirror.test.e2e.acceptance.props.MirrorContractResult;
+import com.hedera.mirror.test.e2e.acceptance.props.MirrorKey;
+import com.hedera.mirror.test.e2e.acceptance.props.MirrorTimestampRange;
 import lombok.Data;
 
-import java.util.ArrayList;
-
 @Data
-public class MirrorContractResultResponse extends MirrorContractResult {
-    private String blockHash;
-    private Long blockNumber;
-    private String hash;
-    private Long gasConsumed;
+public class MirrorActionsResponse {
+    private String from;
+    private Long gas;
     private Long gas_used;
-    private String status;
-    private ArrayList<MirrorActionsResponse> actions;
+    private Integer index;
+    private String recipient;
 }

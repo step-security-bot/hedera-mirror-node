@@ -424,11 +424,11 @@ public class ContractFeature extends AbstractFeature {
         assertThat(contractResult.getGasConsumed()).isNotNull();
     }
 
-    private Long getGasConsumedByTransactionId() {
-        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
-                networkTransactionResponse.getTransactionIdStringNoCheckSum());
-        return contractResult.getGasConsumed();
-    }
+//    private Long getGasConsumedByTransactionId() {
+//        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
+//                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+//        return contractResult.getGasConsumed();
+//    }
 
     private Long getGasConsumedByContractId(ContractId contractId) {
         MirrorContractResultsResponse contractResult = mirrorClient.getContractResultsById(contractId.toString());

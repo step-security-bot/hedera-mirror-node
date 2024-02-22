@@ -35,12 +35,11 @@ import com.hedera.mirror.test.e2e.acceptance.client.NetworkAdapter;
 import com.hedera.mirror.test.e2e.acceptance.props.CompiledSolidityArtifact;
 import com.hedera.mirror.test.e2e.acceptance.props.ContractCallRequest;
 import com.hedera.mirror.test.e2e.acceptance.props.MirrorTransaction;
-import com.hedera.mirror.test.e2e.acceptance.response.ContractCallResponse;
-import com.hedera.mirror.test.e2e.acceptance.response.ExchangeRateResponse;
-import com.hedera.mirror.test.e2e.acceptance.response.MirrorTransactionsResponse;
-import com.hedera.mirror.test.e2e.acceptance.response.NetworkTransactionResponse;
+import com.hedera.mirror.test.e2e.acceptance.response.*;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -221,6 +220,33 @@ public abstract class AbstractFeature extends EncoderDecoderFacade {
     public interface ContractMethodInterface extends SelectorInterface {
         int getActualGas();
     }
+
+    protected Long getGasConsumedByTransactionId() {
+        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
+                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+        return contractResult.getGasConsumed();
+    }
+
+    protected long getAllActionsGas(String transactionId) {
+        MirrorContractResultResponse contractResult = mirrorClient.getContractResultActionsByTransactionId(
+                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+        ArrayList<Long> listOfGasUsed = new ArrayList<>();
+        ArrayList<MirrorActionsResponse> listOfActions = contractResult.getActions();
+        Long finalSum = 0L;
+        for (MirrorActionsResponse listOfAction : listOfActions) {
+            Long actionGasUsed = listOfAction.getGas_used();
+            listOfGasUsed.add(actionGasUsed);
+            finalSum += actionGasUsed;
+        }
+        return finalSum;
+    }
+//
+//    protected long getAllActionsGas() {
+//        MirrorContractResultResponse contractResult = mirrorClient.getContractResultActionsByTransactionId(
+//                networkTransactionResponse.getTransactionIdStringNoCheckSum());
+//        //forach contractResult (gasused ++)
+//        return contractResult.getGasConsumed(); // return gas~Used
+////    }
 
     protected void removeFromContractIdMap(ContractResource key) {
         contractIdMap.remove(key);

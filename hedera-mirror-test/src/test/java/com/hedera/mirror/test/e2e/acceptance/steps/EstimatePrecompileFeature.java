@@ -134,6 +134,7 @@ import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.asLongArray;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.nextBytes;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.nftAmount;
 import static com.hedera.mirror.test.e2e.acceptance.util.TestUtil.to32BytesString;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.esaulpaugh.headlong.abi.Tuple;
 import com.esaulpaugh.headlong.util.Strings;
@@ -1544,6 +1545,11 @@ public class EstimatePrecompileFeature extends AbstractEstimateFeature {
         var data = encodeDataToByteArray(ERC, BALANCE_OF, asAddress(tokenId), asAddress(admin));
         var estimateGasValue = validateAndReturnGas(data, BALANCE_OF, ercTestContractSolidityAddress);
         executeContractTransaction(deployedErcTestContract, estimateGasValue, BALANCE_OF, data);
+
+        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
+        var gasConsumed = getGasConsumedByTransactionId();
+        var gasUsed = getAllActionsGas(transactionId);
+        assertThat(gasConsumed).isEqualTo(gasUsed + 21000);
     }
 
     @And("I update the account and token keys")

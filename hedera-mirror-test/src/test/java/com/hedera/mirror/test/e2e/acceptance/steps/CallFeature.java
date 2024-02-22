@@ -130,9 +130,11 @@ public class CallFeature extends AbstractFeature {
         ercContractAddress = deployedErcTestContract.contractId().toSolidityAddress();
 
         //CALL
+        var transactionId = networkTransactionResponse.getTransactionIdStringNoCheckSum();
         var gasConsumed = getGasConsumedByTransactionId();
-        var gasUsed = getAllActionsGas();
+        var gasUsed = getAllActionsGas(transactionId);
         assertThat(gasConsumed + 21000).isEqualTo(gasUsed);
+        getGasConsumedByTransactionId();
         //verify gas_consumed < gas_+used
         //verify gas_consumed < gasLimit
 
@@ -754,19 +756,6 @@ public class CallFeature extends AbstractFeature {
 
     private long getTotalSupplyOfToken(TokenId tokenId) {
         return mirrorClient.getTokenInfo(tokenId.toString()).getTotalSupply().longValue();
-    }
-
-    private Long getGasConsumedByTransactionId() {
-        MirrorContractResultResponse contractResult = mirrorClient.getContractResultByTransactionId(
-                networkTransactionResponse.getTransactionIdStringNoCheckSum());
-        return contractResult.getGasConsumed();
-    }
-
-    private long getAllActionsGas() {
-        MirrorContractResultResponse contractResult = mirrorClient.getContractResultActionsByTransactionId(
-                networkTransactionResponse.getTransactionIdStringNoCheckSum());
-        //forach contractResult (gasused ++)
-        return contractResult.getGasConsumed(); // return gas~Used
     }
 
     @Getter
